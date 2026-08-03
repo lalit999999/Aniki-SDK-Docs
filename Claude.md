@@ -220,6 +220,7 @@ Hero should include
 - Large heading
 - Short description
 - GitHub button
+- command to install the SDK(npm command)
 - Documentation button
 - GitHub stars
 - Animated code example
