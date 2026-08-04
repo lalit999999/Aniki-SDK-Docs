@@ -52,7 +52,7 @@ Theme
 ```
 shadCN Theme Code
 
-b6tOz2I0x
+b6tOz2I1z
 ```
 
 ---
@@ -92,7 +92,7 @@ No Google login.
 
 Flow
 
-Guest
+Guest(can see documentation)
 
 ↓
 
@@ -108,7 +108,7 @@ role = USER
 
 ↓
 
-Dashboard
+(form for the message to the admin for any query,without login can't fill the form.)
 
 Administrator role is assigned manually by changing the user's role inside MongoDB.
 
@@ -116,7 +116,7 @@ Example
 
 ```ts
 {
-    role: "ADMIN"
+  role: "ADMIN";
 }
 ```
 
@@ -220,6 +220,7 @@ Hero should include
 - Large heading
 - Short description
 - GitHub button
+- some agent sample code (with animation)
 - command to install the SDK(npm command)
 - Documentation button
 - GitHub stars
