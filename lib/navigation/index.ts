@@ -12,3 +12,8 @@
 
 export { buildBreadcrumbJsonLd, buildBreadcrumbTrail, categoryAnchorId } from "./breadcrumbs";
 export type { BreadcrumbTrailItem } from "./breadcrumbs";
+
+export { flattenNav, findAdjacentByRoute } from "./adjacent";
+
+export { isTypingTarget, matchShortcut, SHORTCUTS } from "./shortcuts";
+export type { ShortcutAction, ShortcutDefinition, ShortcutEvent, ShortcutTarget } from "./shortcuts";

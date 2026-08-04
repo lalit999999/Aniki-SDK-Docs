@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SkipLink } from "@/components/docs/skip-link";
 import { DocsHeader } from "@/components/docs/docs-header";
 import { DocsFooter } from "@/components/docs/docs-footer";
+import { NavigationProvider } from "@/components/docs/navigation-provider";
 import { siteConfig } from "@/config/site";
 import { getDocNavigation } from "@/lib/content";
 
@@ -57,12 +58,14 @@ export default async function RootLayout({
       <body className="flex min-h-full flex-col">
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <TooltipProvider>
-            <SkipLink />
-            <DocsHeader nav={nav} />
-            <main id="main-content" className="flex flex-1 flex-col">
-              {children}
-            </main>
-            <DocsFooter />
+            <NavigationProvider nav={nav}>
+              <SkipLink />
+              <DocsHeader nav={nav} />
+              <main id="main-content" className="flex flex-1 flex-col">
+                {children}
+              </main>
+              <DocsFooter />
+            </NavigationProvider>
           </TooltipProvider>
         </ThemeProvider>
       </body>
