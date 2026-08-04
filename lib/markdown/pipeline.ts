@@ -23,7 +23,9 @@ import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
 import { unified } from "unified";
-import type { Root } from "hast";
+import type { Plugin } from "unified";
+import { visit } from "unist-util-visit";
+import type { Element, Root } from "hast";
 
 import { MarkdownRenderError } from "./errors";
 import { getMarkdownHighlighter, MARKDOWN_THEMES } from "./highlighter";
@@ -33,6 +35,36 @@ import remarkCodeMeta from "./plugins/remark-code-meta";
 import rehypeCodeRaw from "./plugins/rehype-code-raw";
 import rehypeDocLinks from "./plugins/rehype-doc-links";
 import type { MarkdownPipelineOptions } from "./types";
+
+const CELL_TAGS = new Set(["th", "td"]);
+
+/**
+ * `mdast-util-to-hast` renders a GFM table's column alignment as an
+ * `align="…"` attribute on each `th`/`td`. `property-information` (which
+ * `hast-util-to-jsx-runtime` consults to decide which hast properties
+ * become JSX props) marks `align` as a legacy attribute with no React
+ * equivalent, so it's silently dropped before `Table`/`TableHeaderCell`
+ * ever see it - alignment would otherwise be lost between the pipeline
+ * and the component layer with no error or warning. Converting it to an
+ * inline `text-align` style survives that trip unchanged, since `style`
+ * is a recognised property that `hast-util-to-jsx-runtime` parses into a
+ * proper React style object.
+ */
+const rehypeTableAlign: Plugin<[], Root> = () => {
+  return (tree: Root) => {
+    visit(tree, "element", (node: Element) => {
+      if (!CELL_TAGS.has(node.tagName)) {
+        return;
+      }
+      const align = node.properties.align;
+      if (typeof align !== "string") {
+        return;
+      }
+      delete node.properties.align;
+      node.properties.style = `text-align: ${align}`;
+    });
+  };
+};
 
 /**
  * Builds the unified processor, parsing markdown all the way through to
@@ -50,6 +82,10 @@ import type { MarkdownPipelineOptions } from "./types";
  *   pipeline's heading-id guarantees in one place).
  * - `rehypeCodeRaw` must run after `remarkRehype` produces `pre`/`code`
  *   hast nodes, and before `rehypePrettyCode` restructures them (D9).
+ * - `rehypeTableAlign` must run after `remarkRehype` produces the `align`
+ *   attribute it rewrites into a `style`; its own position relative to
+ *   the other rehype plugins doesn't matter, since none of them touch
+ *   table cells.
  *
  * @example
  * ```ts
@@ -68,6 +104,7 @@ export function createMarkdownProcessor(options: MarkdownPipelineOptions = {}) {
     .use(remarkCallouts)
     .use(remarkCodeMeta)
     .use(remarkRehype, { allowDangerousHtml: false })
+    .use(rehypeTableAlign)
     .use(rehypeSlug)
     .use(rehypeDocLinks, { knownSlugs })
     .use(rehypeCodeRaw)
