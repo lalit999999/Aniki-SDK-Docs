@@ -1,8 +1,8 @@
 ---
 title: Error Handling
 description: The error taxonomy and how to handle failures.
-category: Reference
-order: 3
+category: Core Concepts
+order: 6
 updated: 2026-08-03
 ---
 

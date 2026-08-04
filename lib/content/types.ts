@@ -145,7 +145,7 @@ export interface Doc {
   /** Markdown body exactly as it appears after the frontmatter block,
    * H1 included. Useful for search indexing or raw export. */
   rawContent: string;
-  /** Flat list of H2-H3 headings, in document order. */
+  /** Flat list of H2-H4 headings, in document order. */
   headings: DocHeading[];
   /** `headings` nested into a tree for table-of-contents rendering. */
   toc: TocNode[];

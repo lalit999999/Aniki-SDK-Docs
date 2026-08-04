@@ -2,7 +2,7 @@
 title: FAQ
 description: Quick answers to frequently asked questions.
 category: Reference
-order: 5
+order: 3
 updated: 2026-08-03
 ---
 
