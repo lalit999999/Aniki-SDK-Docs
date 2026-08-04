@@ -43,7 +43,7 @@ async function buildDoc(filePath: string): Promise<Doc> {
   const draft = frontmatter.draft ?? false;
   const tags = frontmatter.tags ?? [];
 
-  const headings = extractHeadings(tree);
+  const headings = extractHeadings(tree, { maxLevel: 4 });
   const toc = buildToc(headings);
   const readingTime = calculateReadingTime(tree);
   const { updatedAt, source: updatedSource } = await resolveLastModified(
