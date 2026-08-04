@@ -20,7 +20,7 @@ import type { TocNode } from "@/lib/content/types";
 export function TableOfContents({ toc }: { toc: TocNode[] }) {
   const flat = useMemo(() => flattenToc(toc), [toc]);
   const ids = useMemo(() => flat.map((heading) => heading.id), [flat]);
-  const activeId = useActiveHeading(ids);
+  const { activeId, onAnchorSelect } = useActiveHeading(ids);
 
   if (toc.length === 0) {
     return null;
@@ -32,12 +32,20 @@ export function TableOfContents({ toc }: { toc: TocNode[] }) {
       className="sticky top-[calc(var(--header-height)+2rem)] hidden h-[calc(100svh-var(--header-height)-4rem)] shrink-0 overflow-y-auto py-8 pl-6 text-sm xl:block"
     >
       <p className="mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">On this page</p>
-      <TocList nodes={toc} activeId={activeId} />
+      <TocList nodes={toc} activeId={activeId} onAnchorSelect={onAnchorSelect} />
     </aside>
   );
 }
 
-function TocList({ nodes, activeId }: { nodes: TocNode[]; activeId: string | null }) {
+function TocList({
+  nodes,
+  activeId,
+  onAnchorSelect,
+}: {
+  nodes: TocNode[];
+  activeId: string | null;
+  onAnchorSelect: (id: string) => void;
+}) {
   return (
     <ul className="flex flex-col gap-1.5 border-l border-border">
       {nodes.map((node) => {
@@ -47,6 +55,7 @@ function TocList({ nodes, activeId }: { nodes: TocNode[]; activeId: string | nul
             <a
               href={`#${node.id}`}
               aria-current={isActive ? "location" : undefined}
+              onClick={() => onAnchorSelect(node.id)}
               className={cn(
                 "-ml-px block border-l pl-3 text-muted-foreground transition-colors hover:text-foreground",
                 isActive ? "border-l-primary font-medium text-foreground" : "border-l-transparent",
@@ -54,7 +63,9 @@ function TocList({ nodes, activeId }: { nodes: TocNode[]; activeId: string | nul
             >
               {node.text}
             </a>
-            {node.children.length > 0 && <TocList nodes={node.children} activeId={activeId} />}
+            {node.children.length > 0 && (
+              <TocList nodes={node.children} activeId={activeId} onAnchorSelect={onAnchorSelect} />
+            )}
           </li>
         );
       })}
