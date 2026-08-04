@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { DocsBreadcrumbs } from "@/components/docs/docs-breadcrumbs";
 import { DocsContent } from "@/components/docs/docs-content";
 import { EditOnGithub } from "@/components/docs/edit-on-github";
+import { MobileToc } from "@/components/docs/mobile-toc";
 import { PreviousNextNav } from "@/components/docs/previous-next-nav";
 import { TableOfContents } from "@/components/docs/table-of-contents";
 import { findDocBySlug, getAdjacentDocs, getDocSlugs } from "@/lib/content";
@@ -54,6 +55,7 @@ export default async function DocPage({
     <>
       <div className="min-w-0 py-8">
         <DocsBreadcrumbs doc={doc.meta} />
+        <MobileToc toc={doc.toc} />
         <DocsContent doc={doc} />
         <div className="mt-4 mb-8">
           <EditOnGithub slug={slug} />
