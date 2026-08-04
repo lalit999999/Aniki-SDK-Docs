@@ -9,6 +9,8 @@ import type {
   PhrasingContent,
   RootContent,
 } from "mdast";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { HashIcon } from "@hugeicons/core-free-icons";
 
 import { parseMarkdown } from "@/lib/content";
 import type { Doc, DocHeading } from "@/lib/content";
@@ -115,8 +117,22 @@ function HeadingBlock({
         : "text-lg";
 
   return (
-    <Tag id={heading?.id} className={`font-heading font-semibold tracking-tight text-foreground ${sizeClass}`}>
-      {renderInline(node.children)}
+    <Tag
+      id={heading?.id}
+      className={`group font-heading font-semibold tracking-tight text-foreground ${sizeClass}`}
+    >
+      <span className="inline-flex items-center gap-2">
+        {renderInline(node.children)}
+        {heading !== undefined && (
+          <a
+            href={`#${heading.id}`}
+            className="rounded text-muted-foreground opacity-0 outline-none transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50"
+          >
+            <HugeiconsIcon icon={HashIcon} strokeWidth={2} className="size-4" />
+            <span className="sr-only">Link to section: {heading.text}</span>
+          </a>
+        )}
+      </span>
     </Tag>
   );
 }
