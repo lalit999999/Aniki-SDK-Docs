@@ -13,11 +13,22 @@ const categoryEnum = z.enum(DOC_CATEGORIES as [DocCategory, ...DocCategory[]]);
 
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-const updatedField = z
-  .string()
-  .regex(ISO_DATE_PATTERN, "must match YYYY-MM-DD")
-  .refine((value) => !Number.isNaN(Date.parse(value)), "must be a valid calendar date")
-  .optional();
+/**
+ * gray-matter's YAML parser (js-yaml under the hood) treats an unquoted
+ * `YYYY-MM-DD` scalar as a native date, not a string - `updated:
+ * 2026-08-03` in a frontmatter block yields a JS `Date` at parse time.
+ * This preprocess step normalizes that back to a plain date string before
+ * the pattern/calendar checks below run, so authors don't have to
+ * remember to quote the value.
+ */
+const updatedField = z.preprocess(
+  (value) => (value instanceof Date ? value.toISOString().slice(0, 10) : value),
+  z
+    .string()
+    .regex(ISO_DATE_PATTERN, "must match YYYY-MM-DD")
+    .refine((value) => !Number.isNaN(Date.parse(value)), "must be a valid calendar date")
+    .optional(),
+);
 
 const slugField = z.string().min(1).optional();
 const draftField = z.boolean().default(false);
