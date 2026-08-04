@@ -1,3 +1,11 @@
+---
+title: Guides
+description: End-to-end tutorials for common application patterns.
+category: Reference
+order: 2
+updated: 2026-08-03
+---
+
 # Guides
 
 End-to-end tutorials for common application patterns. Each is built from the primitives covered

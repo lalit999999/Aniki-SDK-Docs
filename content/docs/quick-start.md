@@ -1,3 +1,11 @@
+---
+title: Quick Start
+description: The shortest path from install to a first response.
+category: Getting Started
+order: 3
+updated: 2026-08-03
+---
+
 # Quick Start
 
 The shortest path from installed package to a first model response.

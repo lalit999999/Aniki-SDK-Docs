@@ -1,3 +1,11 @@
+---
+title: Generating Text
+description: Running an agent, generation parameters, and structured output.
+category: Core Concepts
+order: 2
+updated: 2026-08-03
+---
+
 # Generating Text
 
 How to run an agent, control generation, read the response object, and get typed, validated

@@ -1,3 +1,11 @@
+---
+title: Memory
+description: Conversation history, sessions, and their lifecycle.
+category: Core Concepts
+order: 5
+updated: 2026-08-03
+---
+
 # Memory
 
 How conversation history is stored, grown, and (not yet) managed across a long-running

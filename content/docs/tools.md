@@ -1,3 +1,11 @@
+---
+title: Tools
+description: Giving an agent capabilities it can call.
+category: Core Concepts
+order: 4
+updated: 2026-08-03
+---
+
 # Tools
 
 Giving an agent capabilities beyond generating text — calling a weather API, querying a database,

@@ -1,3 +1,11 @@
+---
+title: Contributing
+description: Repository conventions and how to contribute.
+category: Reference
+order: 6
+updated: 2026-08-03
+---
+
 # Contributing
 
 Repository conventions for anyone contributing to Aniki-SDK.

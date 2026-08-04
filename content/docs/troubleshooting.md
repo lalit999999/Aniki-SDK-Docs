@@ -1,3 +1,11 @@
+---
+title: Troubleshooting
+description: Symptoms, causes, and solutions for common problems.
+category: Reference
+order: 4
+updated: 2026-08-03
+---
+
 # Troubleshooting
 
 Common problems, why they happen, and how to fix them.

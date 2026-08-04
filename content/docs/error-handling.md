@@ -1,3 +1,11 @@
+---
+title: Error Handling
+description: The error taxonomy and how to handle failures.
+category: Reference
+order: 3
+updated: 2026-08-03
+---
+
 # Error Handling
 
 Every error the SDK throws extends a common base and carries a stable, machine-readable code, so

@@ -1,3 +1,11 @@
+---
+title: Providers
+description: The IProvider contract, OpenAI, and writing a custom provider.
+category: Core Concepts
+order: 1
+updated: 2026-08-03
+---
+
 # Providers
 
 Providers are how the SDK talks to an actual LLM vendor. This page covers what's registered and

@@ -1,3 +1,11 @@
+---
+title: API Reference
+description: Every exported class, type, and function.
+category: Reference
+order: 1
+updated: 2026-08-03
+---
+
 # API Reference
 
 Every item exported from `aniki-sdk` and `aniki-sdk/testing`, grouped into the same sections

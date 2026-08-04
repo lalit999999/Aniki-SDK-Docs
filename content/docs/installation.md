@@ -1,3 +1,11 @@
+---
+title: Installation
+description: Requirements, installing the package, and verifying your setup.
+category: Getting Started
+order: 2
+updated: 2026-08-03
+---
+
 # Installation
 
 ## Requirements

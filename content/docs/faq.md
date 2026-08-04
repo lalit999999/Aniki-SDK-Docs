@@ -1,3 +1,11 @@
+---
+title: FAQ
+description: Quick answers to frequently asked questions.
+category: Reference
+order: 5
+updated: 2026-08-03
+---
+
 # FAQ
 
 ## Which providers are supported?

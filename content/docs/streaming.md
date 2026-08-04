@@ -1,3 +1,11 @@
+---
+title: Streaming
+description: Consuming a run as it's produced, and its current limitations.
+category: Core Concepts
+order: 3
+updated: 2026-08-03
+---
+
 # Streaming
 
 Consuming a run's output as it's produced, instead of waiting for the whole response.

@@ -1,3 +1,11 @@
+---
+title: Introduction
+description: What Aniki-SDK is, why it exists, and its design philosophy.
+category: Getting Started
+order: 1
+updated: 2026-08-03
+---
+
 # Introduction
 
 Aniki-SDK is a TypeScript, provider-agnostic AI Agent SDK for building production-ready AI agents

@@ -1,3 +1,11 @@
+---
+title: Your First Agent
+description: Building, running, and understanding an Agent.
+category: Getting Started
+order: 4
+updated: 2026-08-03
+---
+
 # Your First Agent
 
 A closer look at what `Agent` and `Runner` actually do, and how to hold a multi-turn conversation.
