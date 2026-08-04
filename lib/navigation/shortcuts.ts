@@ -28,11 +28,7 @@ export interface ShortcutTarget {
   isContentEditable: boolean;
 }
 
-/**
- * Every action a keyboard shortcut can trigger. `"open-palette"` is added by
- * the command palette in a later change; the type is defined here since
- * `SHORTCUTS` and `matchShortcut` both need to know its full range.
- */
+/** Every action a keyboard shortcut can trigger. */
 export type ShortcutAction = "previous-page" | "next-page" | "toggle-help" | "open-palette";
 
 /**
@@ -59,11 +55,12 @@ export interface ShortcutDefinition {
 }
 
 /**
- * The fixed shortcut set (see D8 in the Step 5 spec). `"open-palette"`'s
- * `/` and `⌘K`/`Ctrl+K` rows are appended by the command palette change,
- * which also extends `matchShortcut` to recognise them.
+ * The fixed shortcut set (see D8 in the Step 5 spec). `"open-palette"` has
+ * two rows - `⌘K`/`Ctrl+K` and `/` - since either opens the palette.
  */
 export const SHORTCUTS: readonly ShortcutDefinition[] = [
+  { keys: ["⌘", "K"], action: "open-palette", label: "Open navigation palette" },
+  { keys: ["/"], action: "open-palette", label: "Open navigation palette" },
   { keys: ["["], action: "previous-page", label: "Previous page" },
   { keys: ["]"], action: "next-page", label: "Next page" },
   { keys: ["?"], action: "toggle-help", label: "Toggle this help dialog" },
@@ -75,14 +72,19 @@ export const SHORTCUTS: readonly ShortcutDefinition[] = [
  *
  * Any combination including `altKey` always returns `null`, so a shortcut
  * here can never clobber an OS or browser accelerator that happens to share
- * a base key. `[`, `]`, and `?` are suppressed while `target` is a typing
- * target (see `isTypingTarget`) so they don't fire while the user is
- * entering text; `⌘K`/`Ctrl+K`, added alongside `"open-palette"`, is exempt
- * from that check since the modifier already makes it unambiguous.
+ * a base key. `⌘K`/`Ctrl+K` is checked first and matches even while typing -
+ * the modifier already makes it unambiguous, unlike a bare key a user might
+ * legitimately want to type into a field. Every other shortcut, including
+ * `/`, is suppressed while `target` is a typing target (see
+ * `isTypingTarget`).
  */
 export function matchShortcut(event: ShortcutEvent, target: ShortcutTarget | null): ShortcutAction | null {
   if (event.altKey) {
     return null;
+  }
+
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+    return "open-palette";
   }
 
   if (event.metaKey || event.ctrlKey) {
@@ -100,6 +102,8 @@ export function matchShortcut(event: ShortcutEvent, target: ShortcutTarget | nul
       return "next-page";
     case "?":
       return "toggle-help";
+    case "/":
+      return "open-palette";
     default:
       return null;
   }

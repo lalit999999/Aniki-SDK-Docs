@@ -17,3 +17,6 @@ export { flattenNav, findAdjacentByRoute } from "./adjacent";
 
 export { isTypingTarget, matchShortcut, SHORTCUTS } from "./shortcuts";
 export type { ShortcutAction, ShortcutDefinition, ShortcutEvent, ShortcutTarget } from "./shortcuts";
+
+export { buildPaletteItems } from "./palette";
+export type { PaletteItem } from "./palette";
