@@ -16,11 +16,11 @@ import { cn } from "@/lib/utils";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Link01Icon } from "@hugeicons/core-free-icons";
 
-/** Flattens a heading's rendered children back to plain text, for the
- * anchor link's `aria-label`. Markdown headings only ever nest inline
- * content (text, code spans, emphasis, links), so this never needs to
- * recurse into block-level children. */
-function extractText(node: ReactNode): string {
+/** Flattens a rendered React tree back to plain text - used for a
+ * heading's anchor-link `aria-label` and (via `code-block.tsx`) for a
+ * code block's filename, both of which only ever nest inline content, so
+ * this never needs to special-case block-level children. */
+export function extractPlainText(node: ReactNode): string {
   if (typeof node === "string") {
     return node;
   }
@@ -28,11 +28,11 @@ function extractText(node: ReactNode): string {
     return String(node);
   }
   if (Array.isArray(node)) {
-    return node.map(extractText).join("");
+    return node.map(extractPlainText).join("");
   }
   if (isValidElement(node)) {
     const props = node.props as { children?: ReactNode };
-    return extractText(props.children);
+    return extractPlainText(props.children);
   }
   return "";
 }
@@ -54,7 +54,7 @@ function makeHeading(level: 2 | 3 | 4 | 5 | 6) {
   const Tag = `h${level}` as "h2" | "h3" | "h4" | "h5" | "h6";
 
   function Heading({ id, children }: HeadingProps) {
-    const text = extractText(children);
+    const text = extractPlainText(children);
     return (
       <Tag
         id={id}

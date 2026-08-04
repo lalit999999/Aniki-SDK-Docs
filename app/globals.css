@@ -155,3 +155,54 @@
     }
   }
 }
+
+@layer components {
+  /*
+   * Shiki (D6): rehype-pretty-code emits a `--shiki-light`/`--shiki-dark`
+   * custom property on every highlighted token span, plus the pair
+   * joined by a space on the `data-theme` attribute of the `code`
+   * element itself. Swapping which variable `color` reads from is all
+   * `.dark` needs to do - backgrounds and borders come from CodeBlock's
+   * own theme-token classes (`bg-card`, `border-border`), which is why
+   * `keepBackground: false` is set on rehypePrettyCode.
+   */
+  code[data-theme*=" "],
+  code[data-theme*=" "] span {
+    color: var(--shiki-light);
+  }
+
+  .dark code[data-theme*=" "],
+  .dark code[data-theme*=" "] span {
+    color: var(--shiki-dark);
+  }
+
+  /*
+   * Line numbers (D7/D10): rehype-pretty-code wraps each source line in
+   * a `[data-line]` span inside a `code[data-line-numbers]` element and
+   * reports the widest line number's digit count as
+   * `data-line-numbers-max-digits`, so the gutter can be sized without
+   * layout shift as a block grows past 9, 99, or 999 lines.
+   */
+  code[data-line-numbers] {
+    counter-reset: line;
+  }
+
+  code[data-line-numbers] > [data-line]::before {
+    counter-increment: line;
+    content: counter(line);
+    display: inline-block;
+    width: 2ch;
+    margin-right: 1.25rem;
+    text-align: right;
+    color: var(--muted-foreground);
+    user-select: none;
+  }
+
+  code[data-line-numbers-max-digits="3"] > [data-line]::before {
+    width: 3ch;
+  }
+
+  code[data-line-numbers-max-digits="4"] > [data-line]::before {
+    width: 4ch;
+  }
+}
