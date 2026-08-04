@@ -2,32 +2,30 @@
 
 import { useEffect, useState } from "react";
 
+import { useMediaQuery } from "@/hooks/use-media-query";
+
+function readScrollProgress(): number {
+  if (typeof window === "undefined") {
+    return 0;
+  }
+  const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+  return scrollable > 0 ? Math.min(100, (window.scrollY / scrollable) * 100) : 0;
+}
+
 /**
  * A 2px bar tracking scroll progress through the whole page, mounted just
- * under the header. Disabled under `prefers-reduced-motion: reduce` since
- * the browser-level media query can't be read at build time.
+ * under the header. Disabled under `prefers-reduced-motion: reduce`.
  */
 export function ReadingProgress() {
-  const [progress, setProgress] = useState(0);
-  const [reduceMotion, setReduceMotion] = useState(false);
+  const [progress, setProgress] = useState(readScrollProgress);
+  const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
 
   useEffect(() => {
-    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReduceMotion(media.matches);
-    const onChange = () => setReduceMotion(media.matches);
-    media.addEventListener("change", onChange);
-
     function onScroll() {
-      const scrollable = document.documentElement.scrollHeight - window.innerHeight;
-      setProgress(scrollable > 0 ? Math.min(100, (window.scrollY / scrollable) * 100) : 0);
+      setProgress(readScrollProgress());
     }
-    onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
-
-    return () => {
-      media.removeEventListener("change", onChange);
-      window.removeEventListener("scroll", onScroll);
-    };
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   if (reduceMotion) {

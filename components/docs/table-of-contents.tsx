@@ -4,8 +4,11 @@ import { useMemo } from "react";
 
 import { cn } from "@/lib/utils";
 import { useActiveHeading } from "@/hooks/use-active-heading";
-import { flattenToc } from "@/lib/content";
-import type { TocNode } from "@/lib/content";
+// Imported directly from the submodule, not the `server-only`-guarded
+// `@/lib/content` barrel: `flattenToc` is a pure function with no
+// filesystem access, and this component runs on the client.
+import { flattenToc } from "@/lib/content/toc";
+import type { TocNode } from "@/lib/content/types";
 
 /**
  * Right-hand "on this page" navigation, rendered from a document's nested

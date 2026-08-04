@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -19,7 +21,7 @@ export function DocsBreadcrumbs({ doc }: { doc: DocMeta }) {
       <BreadcrumbList>
         <BreadcrumbItem>
           <BreadcrumbLink asChild>
-            <a href="/docs">Docs</a>
+            <Link href="/docs">Docs</Link>
           </BreadcrumbLink>
         </BreadcrumbItem>
         <BreadcrumbSeparator />
