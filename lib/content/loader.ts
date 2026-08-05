@@ -12,6 +12,8 @@ import path from "node:path";
 
 import matter from "gray-matter";
 
+import { getLatestVersion } from "@/lib/versions/registry";
+
 import { ContentNotFoundError, DuplicateSlugError } from "./errors";
 import { resolveLastModified } from "./git";
 import { extractHeadings, extractLeadingH1, parseMarkdown, stripLeadingH1 } from "./headings";
@@ -31,7 +33,7 @@ async function buildDoc(filePath: string): Promise<Doc> {
   const frontmatter = parsePartialFrontmatter(parsed.data, filePath);
 
   const fileName = path.basename(filePath);
-  const slug = fileNameToSlug(fileName);
+  const slug = fileNameToSlug(fileName, filePath);
 
   const tree = parseMarkdown(parsed.content, filePath);
   const leadingH1 = extractLeadingH1(tree);
@@ -94,7 +96,7 @@ async function buildIndex(): Promise<Doc[]> {
     return cachedIndex;
   }
 
-  const files = await listDocFiles();
+  const files = await listDocFiles(getLatestVersion().id);
   const docs = await Promise.all(files.map((file) => buildDoc(file)));
 
   const filePathsBySlug = new Map<string, string[]>();

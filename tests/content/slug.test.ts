@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { createHeadingSlugger, fileNameToSlug, slugToRoute, slugToTitle } from "@/lib/content/slug";
+import { ReservedSlugError } from "@/lib/content/errors";
+import { createHeadingSlugger, fileNameToSlug, slugToRoute, slugToVersionedRoute, slugToTitle } from "@/lib/content/slug";
+import { getLatestVersion } from "@/lib/versions/registry";
 
 describe("fileNameToSlug", () => {
   it("maps README.md to the index slug", () => {
@@ -16,15 +18,38 @@ describe("fileNameToSlug", () => {
     expect(() => fileNameToSlug("My File.md")).toThrow();
     expect(() => fileNameToSlug("Under_Score.md")).toThrow();
   });
+
+  it("rejects a slug matching the version id pattern with ReservedSlugError", () => {
+    expect(() => fileNameToSlug("v2.md")).toThrow(ReservedSlugError);
+  });
+
+  it("still allows a slug that merely starts with v but isn't a version id", () => {
+    expect(fileNameToSlug("validation.md")).toBe("validation");
+  });
 });
 
 describe("slugToRoute", () => {
+  const latestId = getLatestVersion().id;
+
   it("routes the index slug to /docs", () => {
     expect(slugToRoute("index")).toBe("/docs");
   });
 
   it("routes any other slug to /docs/<slug>", () => {
     expect(slugToRoute("tools")).toBe("/docs/tools");
+  });
+
+  it("routes the latest version's slug unprefixed even when versionId is given explicitly", () => {
+    expect(slugToRoute("index", latestId)).toBe("/docs");
+    expect(slugToRoute("tools", latestId)).toBe("/docs/tools");
+  });
+});
+
+describe("slugToVersionedRoute", () => {
+  it("always prefixes with the version id, even for the latest version", () => {
+    const latestId = getLatestVersion().id;
+    expect(slugToVersionedRoute("index", latestId)).toBe(`/docs/${latestId}`);
+    expect(slugToVersionedRoute("tools", latestId)).toBe(`/docs/${latestId}/tools`);
   });
 });
 

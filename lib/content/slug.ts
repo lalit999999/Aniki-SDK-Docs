@@ -6,6 +6,10 @@
 
 import GithubSlugger from "github-slugger";
 
+import { getLatestVersion, isLatestVersionId, VERSION_ID_PATTERN } from "@/lib/versions/registry";
+
+import { ReservedSlugError } from "./errors";
+
 const FILE_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$|^index$/;
 
 /**
@@ -15,10 +19,18 @@ const FILE_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$|^index$/;
  * page routes to `/docs`, not `/docs/readme`). Every other file is
  * lowercased and stripped of its `.md` extension.
  *
+ * @param filePath - the file's path, used only to enrich error context
+ * (`ReservedSlugError`, `Error`) with something more useful than the bare
+ * filename. Defaults to `fileName` when omitted.
+ *
  * @throws {Error} if the resulting slug isn't a clean lowercase,
  * hyphen-separated token (or `"index"`) - this indicates a filename that
  * can't produce a predictable route and should be renamed rather than
  * silently mangled.
+ * @throws {ReservedSlugError} if the resulting slug matches
+ * `VERSION_ID_PATTERN` (e.g. a file named `v2.md`) - such a slug would be
+ * unreachable, since `resolveDocsPath` always treats a leading `v<n>`
+ * segment as a version id, never a page slug.
  *
  * @example
  * ```ts
@@ -26,7 +38,7 @@ const FILE_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$|^index$/;
  * fileNameToSlug("quick-start.md"); // "quick-start"
  * ```
  */
-export function fileNameToSlug(fileName: string): string {
+export function fileNameToSlug(fileName: string, filePath?: string): string {
   const withoutExtension = fileName.replace(/\.md$/i, "");
   const slug = withoutExtension.toLowerCase() === "readme"
     ? "index"
@@ -39,21 +51,54 @@ export function fileNameToSlug(fileName: string): string {
     );
   }
 
+  if (VERSION_ID_PATTERN.test(slug)) {
+    throw new ReservedSlugError(
+      `slug "${slug}" (from "${fileName}") collides with the documentation version id pattern`,
+      { slug, filePath: filePath ?? fileName },
+    );
+  }
+
   return slug;
 }
 
 /**
- * Maps a route slug to its URL path (D8: the index slug routes to `/docs`
- * itself, not `/docs/index`).
+ * Maps a document slug to its URL path (D4/D8). The index slug routes to
+ * a version's own root rather than an `/index` segment. Omitting
+ * `versionId` resolves the latest version, which - per D4/D6 - is served
+ * unprefixed at `/docs`; any other version is served under `/docs/<id>`.
  *
  * @example
  * ```ts
- * slugToRoute("index"); // "/docs"
- * slugToRoute("tools"); // "/docs/tools"
+ * slugToRoute("index");        // "/docs" (latest version)
+ * slugToRoute("tools");        // "/docs/tools" (latest version)
+ * slugToRoute("index", "v1");  // "/docs" if v1 is latest, else "/docs/v1"
+ * slugToRoute("tools", "v1");  // "/docs/tools" if v1 is latest, else "/docs/v1/tools"
  * ```
  */
-export function slugToRoute(slug: string): string {
-  return slug === "index" ? "/docs" : `/docs/${slug}`;
+export function slugToRoute(slug: string, versionId?: string): string {
+  const resolvedVersionId = versionId ?? getLatestVersion().id;
+
+  if (isLatestVersionId(resolvedVersionId)) {
+    return slug === "index" ? "/docs" : `/docs/${slug}`;
+  }
+
+  return slug === "index" ? `/docs/${resolvedVersionId}` : `/docs/${resolvedVersionId}/${slug}`;
+}
+
+/**
+ * Maps a document slug to its URL path, always prefixed with `versionId`
+ * regardless of whether that version is currently latest. Used where a
+ * link must point at a *specific* version's copy of a page even after a
+ * newer version takes over the unprefixed `/docs` URLs - e.g. the legacy
+ * version banner linking back to the page a reader was viewing.
+ *
+ * @example
+ * ```ts
+ * slugToVersionedRoute("tools", "v1"); // "/docs/v1/tools", always
+ * ```
+ */
+export function slugToVersionedRoute(slug: string, versionId: string): string {
+  return slug === "index" ? `/docs/${versionId}` : `/docs/${versionId}/${slug}`;
 }
 
 /**
