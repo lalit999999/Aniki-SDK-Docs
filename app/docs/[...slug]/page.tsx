@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
 import { DocsIndex } from "@/components/docs/docs-index";
+import { DeprecationNotice } from "@/components/docs/deprecation-notice";
 import { DocMetaBar } from "@/components/docs/doc-meta-bar";
 import { DocsBreadcrumbs } from "@/components/docs/docs-breadcrumbs";
 import { DocsContent } from "@/components/docs/docs-content";
@@ -11,6 +12,7 @@ import { EditOnGithub } from "@/components/docs/edit-on-github";
 import { MobileToc } from "@/components/docs/mobile-toc";
 import { PreviousNextNav } from "@/components/docs/previous-next-nav";
 import { TableOfContents } from "@/components/docs/table-of-contents";
+import { VersionNotice } from "@/components/docs/version-notice";
 import {
   findDocBySlug,
   getAdjacentDocs,
@@ -125,6 +127,8 @@ export default async function DocsCatchAllPage({
       <DocsSidebar nav={nav} version={version} />
       <div className="min-w-0 py-8">
         <DocsBreadcrumbs doc={doc.meta} />
+        <VersionNotice versionId={versionId} slug={docSlug} />
+        <DeprecationNotice meta={doc.meta} />
         <MobileToc toc={doc.toc} />
         <DocsContent doc={doc} afterTitle={<DocMetaBar meta={doc.meta} />} />
         <div className="mt-4 mb-8">
