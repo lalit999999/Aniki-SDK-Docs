@@ -38,6 +38,8 @@ export { createSearchEngine } from "./engine";
 export { buildSnippet, highlight } from "./highlight";
 export type { BuildSnippetOptions } from "./highlight";
 
+export { SEARCH_INDEX_URL, isSearchIndex, loadSearchIndex } from "./client";
+
 export { normalize, normalizeChar, splitIdentifier, tokenize, tokenizeQuery } from "./tokenize";
 export type { TokenizedQuery } from "./tokenize";
 
