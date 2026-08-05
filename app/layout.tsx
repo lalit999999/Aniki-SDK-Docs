@@ -10,7 +10,6 @@ import { DocsFooter } from "@/components/docs/docs-footer";
 import { NavigationProvider } from "@/components/docs/navigation-provider";
 import { SearchProvider } from "@/components/search/search-provider";
 import { siteConfig } from "@/config/site";
-import { getDocNavigation } from "@/lib/content";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -43,13 +42,11 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const nav = await getDocNavigation();
-
   return (
     <html
       lang="en"
@@ -60,9 +57,18 @@ export default async function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <TooltipProvider>
             <SearchProvider>
-              <NavigationProvider nav={nav}>
+              {/*
+                A root layout receives no route params (D12) and must not
+                pay for reading every version's markdown on every page,
+                including the landing page - so it no longer loads
+                DocNavCategory[] here. previous-page/next-page therefore
+                start as no-ops (findAdjacentByRoute against []) until a
+                future step gives NavigationProvider a way to receive the
+                current page's version-scoped nav.
+              */}
+              <NavigationProvider nav={[]}>
                 <SkipLink />
-                <DocsHeader nav={nav} />
+                <DocsHeader />
                 <main id="main-content" className="flex flex-1 flex-col">
                   {children}
                 </main>

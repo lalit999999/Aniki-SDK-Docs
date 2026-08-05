@@ -5,11 +5,14 @@ import { siteConfig } from "@/config/site";
 
 /**
  * Links to the source markdown file for the current document on GitHub.
- * The URL is built from `siteConfig`, never hardcoded per page.
+ * The URL is built from `siteConfig` and the document's own
+ * `meta.filePath` (repo-relative, e.g. `content/docs/v1/introduction.md`) -
+ * that's already correct for whichever version the document belongs to,
+ * which deletes the old `README`/`index` special-casing this component
+ * used to need when it only had a bare slug to work from.
  */
-export function EditOnGithub({ slug }: { slug: string }) {
-  const fileName = slug === "index" ? "README" : slug;
-  const href = `${siteConfig.links.docsRepo}/edit/main/content/docs/${fileName}.md`;
+export function EditOnGithub({ filePath }: { filePath: string }) {
+  const href = `${siteConfig.links.docsRepo}/edit/main/${filePath}`;
 
   return (
     <a

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { DocsIndex } from "@/components/docs/docs-index";
+import { DocsNavMobile } from "@/components/docs/docs-nav-mobile";
 import { DocsSidebar } from "@/components/docs/docs-sidebar";
 import { getAllDocMeta, getDocBySlug, getDocNavigation } from "@/lib/content";
 import { getLatestVersion } from "@/lib/versions";
@@ -31,7 +32,8 @@ export default async function DocsIndexPage() {
 
   return (
     <>
-      <DocsSidebar nav={nav} />
+      <DocsNavMobile nav={nav} version={version} />
+      <DocsSidebar nav={nav} version={version} />
       <DocsIndex index={index} docs={meta} version={version} />
     </>
   );

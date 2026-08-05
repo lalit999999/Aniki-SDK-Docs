@@ -5,6 +5,7 @@ import { DocsIndex } from "@/components/docs/docs-index";
 import { DocMetaBar } from "@/components/docs/doc-meta-bar";
 import { DocsBreadcrumbs } from "@/components/docs/docs-breadcrumbs";
 import { DocsContent } from "@/components/docs/docs-content";
+import { DocsNavMobile } from "@/components/docs/docs-nav-mobile";
 import { DocsSidebar } from "@/components/docs/docs-sidebar";
 import { EditOnGithub } from "@/components/docs/edit-on-github";
 import { MobileToc } from "@/components/docs/mobile-toc";
@@ -104,7 +105,8 @@ export default async function DocsCatchAllPage({
     const meta = await getAllDocMeta(versionId);
     return (
       <>
-        <DocsSidebar nav={nav} />
+        <DocsNavMobile nav={nav} version={version} />
+        <DocsSidebar nav={nav} version={version} />
         <DocsIndex index={index} docs={meta} version={version} />
       </>
     );
@@ -119,13 +121,14 @@ export default async function DocsCatchAllPage({
 
   return (
     <>
-      <DocsSidebar nav={nav} />
+      <DocsNavMobile nav={nav} version={version} />
+      <DocsSidebar nav={nav} version={version} />
       <div className="min-w-0 py-8">
         <DocsBreadcrumbs doc={doc.meta} />
         <MobileToc toc={doc.toc} />
         <DocsContent doc={doc} afterTitle={<DocMetaBar meta={doc.meta} />} />
         <div className="mt-4 mb-8">
-          <EditOnGithub slug={docSlug} />
+          <EditOnGithub filePath={doc.meta.filePath} />
         </div>
         <PreviousNextNav adjacent={adjacent} />
       </div>

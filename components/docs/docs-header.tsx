@@ -4,21 +4,24 @@ import { GithubIcon } from "@hugeicons/core-free-icons";
 
 import { Button } from "@/components/ui/button";
 import { HeaderShell } from "@/components/docs/header-shell";
-import { MobileSidebar } from "@/components/docs/mobile-sidebar";
 import { SearchTrigger } from "@/components/search/search-trigger";
 import { ThemeToggle } from "@/components/docs/theme-toggle";
+import { VersionSwitcher } from "@/components/docs/version-switcher";
 import { siteConfig } from "@/config/site";
-import type { DocNavCategory } from "@/lib/content";
 
 /**
  * The site-wide header: sticky, transparent at the top of the page and
  * blurred once scrolled (`HeaderShell`), with the logo, primary nav, the
- * `⌘K` search trigger, GitHub link, theme toggle, and - on small viewports -
- * the documentation drawer trigger. Stays a Server Component; only the
- * pieces that need the browser (`HeaderShell`, `MobileSidebar`,
- * `SearchTrigger`, `ThemeToggle`) are client leaves.
+ * version switcher, the `⌘K` search trigger, GitHub link, and theme toggle.
+ * Stays a Server Component; only the pieces that need the browser
+ * (`HeaderShell`, `VersionSwitcher`, `SearchTrigger`, `ThemeToggle`) are
+ * client leaves.
+ *
+ * No longer renders the documentation drawer (D12): a root layout has no
+ * route params, so it can't supply version-scoped navigation data. The
+ * drawer moved into `DocsNavMobile`, rendered by each docs page instead.
  */
-export function DocsHeader({ nav }: { nav: DocNavCategory[] }) {
+export function DocsHeader() {
   return (
     <HeaderShell>
       <div className="mx-auto flex h-full max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
@@ -39,7 +42,8 @@ export function DocsHeader({ nav }: { nav: DocNavCategory[] }) {
           ))}
         </nav>
 
-        <div className="ml-auto flex items-center gap-1">
+        <div className="ml-auto flex items-center gap-2">
+          <VersionSwitcher />
           <SearchTrigger />
 
           <Button asChild variant="ghost" size="icon" aria-label="View on GitHub">
@@ -49,8 +53,6 @@ export function DocsHeader({ nav }: { nav: DocNavCategory[] }) {
           </Button>
 
           <ThemeToggle />
-
-          <MobileSidebar nav={nav} />
         </div>
       </div>
     </HeaderShell>
