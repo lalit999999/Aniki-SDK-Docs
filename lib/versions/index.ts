@@ -29,4 +29,7 @@ export {
 
 export { UnknownVersionError, VersionConfigError, VersionsError } from "./errors";
 
+export { docsIndexRoute, resolveDocsPath } from "./route";
+export type { ResolvedDocsPath } from "./route";
+
 export type { DocsVersion, DocsVersionStatus, DocsVersionSummary } from "./types";

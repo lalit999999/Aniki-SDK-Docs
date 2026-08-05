@@ -21,7 +21,7 @@ export default function DocsError({
   }, [error]);
 
   return (
-    <div className="min-w-0 py-16 text-center xl:col-span-2">
+    <div className="col-span-full min-w-0 py-16 text-center">
       <h1 className="font-heading text-2xl font-bold text-foreground">Something went wrong</h1>
       <p className="mt-2 text-muted-foreground">
         This documentation page failed to load. You can try again, or head back to the docs home.

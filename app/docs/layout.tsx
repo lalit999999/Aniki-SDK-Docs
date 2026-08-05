@@ -1,28 +1,26 @@
-import { DocsSidebar } from "@/components/docs/docs-sidebar";
 import { ReadingProgress } from "@/components/docs/reading-progress";
-import { getDocNavigation } from "@/lib/content";
 
 /**
- * Shared shell for every route under `/docs`: sidebar + content + (when a
- * page renders one) a right-hand table of contents.
+ * Shared shell for every route under `/docs`: the reading-progress bar and
+ * a three-column grid (sidebar / content / table of contents at `xl`, two
+ * columns at `lg`, one below that).
  *
- * The grid is defined here with three column tracks from `xl` up, two from
- * `lg`, and one below that (sidebar becomes the mobile drawer in the
- * header instead). Only the sidebar is rendered directly - `children` is
- * whatever the page renders. A page that also renders a `TableOfContents`
- * as a sibling element (not nested inside its own content wrapper) gets it
- * placed in the third column automatically, since a fragment's top-level
- * children flatten into this same grid; a page with no TOC (the docs
- * index) spans the remaining columns itself.
+ * A root/shared layout receives no route params (D12), so it cannot know
+ * which documentation version's sidebar to render - `/docs/v1/*` and
+ * `/docs/*` need different navigation, and only a page component knows
+ * which one it is. `DocsSidebar` therefore moved out of this layout: every
+ * page under `/docs` renders it itself as the first child of the fragment
+ * it returns, and a fragment's top-level children flatten into this same
+ * grid, landing the sidebar in column one exactly as it did when this
+ * layout rendered it directly. A page with no sidebar (an error/loading/
+ * not-found boundary) uses `col-span-full` instead, spanning whatever
+ * track count applies at the current breakpoint.
  */
-export default async function DocsLayout({ children }: { children: React.ReactNode }) {
-  const nav = await getDocNavigation();
-
+export default function DocsLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-1 flex-col">
       <ReadingProgress />
       <div className="mx-auto grid w-full max-w-7xl flex-1 grid-cols-1 gap-8 px-4 sm:px-6 lg:grid-cols-[16rem_minmax(0,1fr)] lg:px-8 xl:grid-cols-[16rem_minmax(0,1fr)_16rem]">
-        <DocsSidebar nav={nav} />
         {children}
       </div>
     </div>
