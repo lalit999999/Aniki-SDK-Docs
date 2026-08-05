@@ -64,6 +64,24 @@ export interface DocFrontmatter {
   draft?: boolean;
   /** Free-form tags for future search/filtering. Defaults to `[]`. */
   tags?: readonly string[];
+  /** When `true`, this page is superseded within its own version (D9 - a
+   * distinct concept from a *version* being legacy, see `DocsVersionStatus`).
+   * Defaults to `false`. `deprecatedSince`, `deprecatedReason`, and
+   * `replacedBy` are only meaningful when this is `true` - validated by
+   * `docFrontmatterSchema`'s cross-field refinement. */
+  deprecated?: boolean;
+  /** ISO date (`YYYY-MM-DD`) the page was marked deprecated. */
+  deprecatedSince?: string;
+  /** Human-readable reason the page was deprecated. */
+  deprecatedReason?: string;
+  /** Slug, within this same version, of the page that replaces this one.
+   * Validated at index-build time (`loader.ts`) to resolve to a real page
+   * in the same version - a dangling pointer fails the build. */
+  replacedBy?: string;
+  /** Version id this page was introduced in. Purely informational - not
+   * validated against the version registry, since a page can predate the
+   * versioning system entirely. */
+  since?: string;
 }
 
 /**
@@ -140,6 +158,19 @@ export interface DocMeta {
   version: string;
   /** Whether `version` is the current latest version. */
   isLatestVersion: boolean;
+  /** Whether this page is deprecated within its version (D9). */
+  deprecated: boolean;
+  /** ISO date the page was deprecated, or `null` when `deprecated` is
+   * `false` or the frontmatter omitted it. */
+  deprecatedSince: string | null;
+  /** Reason the page was deprecated, or `null` when `deprecated` is
+   * `false` or the frontmatter omitted it. */
+  deprecatedReason: string | null;
+  /** Slug of the replacing page within this version, or `null` when
+   * `deprecated` is `false` or the frontmatter omitted it. */
+  replacedBy: string | null;
+  /** Version id this page was introduced in, or `null` if undeclared. */
+  since: string | null;
 }
 
 /**
