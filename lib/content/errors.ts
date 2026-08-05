@@ -17,7 +17,8 @@ export type ContentErrorCode =
   | "CONTENT_NOT_FOUND"
   | "FRONTMATTER_INVALID"
   | "DUPLICATE_SLUG"
-  | "MARKDOWN_PARSE_ERROR";
+  | "MARKDOWN_PARSE_ERROR"
+  | "RESERVED_SLUG";
 
 /**
  * Base class for every error the content system throws. Not thrown
@@ -171,5 +172,29 @@ export class MarkdownParseError extends ContentError {
 
   constructor(message: string, context: { filePath: string }, cause?: unknown) {
     super(message, { context, cause });
+  }
+}
+
+/**
+ * Thrown when a markdown filename would produce a slug matching a
+ * documentation version id pattern (`VERSION_ID_PATTERN`, e.g. `v2`). A doc
+ * slug that looks like a version id would be unreachable - `resolveDocsPath`
+ * (D5) always interprets a leading `v<n>` segment as a version, never a
+ * page slug - so this must fail the build rather than silently shadow a
+ * route.
+ *
+ * @example
+ * ```ts
+ * throw new ReservedSlugError("slug \"v2\" collides with a version id", {
+ *   slug: "v2",
+ *   filePath: "content/docs/v1/v2.md",
+ * });
+ * ```
+ */
+export class ReservedSlugError extends ContentError {
+  readonly code = "RESERVED_SLUG" as const;
+
+  constructor(message: string, context: { slug: string; filePath: string }) {
+    super(message, { context });
   }
 }

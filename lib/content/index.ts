@@ -25,10 +25,12 @@ export {
   getAdjacentDocs,
   getAllDocMeta,
   getAllDocs,
+  getAllVersionedRoutes,
   getDocBySlug,
   getDocNavigation,
   getDocRoutes,
   getDocSlugs,
+  getDocVersions,
   getDocsByCategory,
 } from "./loader";
 
@@ -39,19 +41,27 @@ export {
   DuplicateSlugError,
   FrontmatterValidationError,
   MarkdownParseError,
+  ReservedSlugError,
 } from "./errors";
 export type { ContentErrorCode } from "./errors";
 
 export { docFrontmatterSchema, parseFrontmatter, parsePartialFrontmatter, partialDocFrontmatterSchema } from "./schema";
 
-export { createHeadingSlugger, fileNameToSlug, slugToRoute, slugToTitle } from "./slug";
+export { createHeadingSlugger, fileNameToSlug, slugToRoute, slugToVersionedRoute, slugToTitle } from "./slug";
 export type { HeadingSlugger } from "./slug";
 
 export { extractHeadings, extractLeadingH1, parseMarkdown, stripLeadingH1 } from "./headings";
 export { buildToc, flattenToc } from "./toc";
 export { calculateReadingTime, extractProse } from "./reading-time";
 export { getGitLastModified, resolveLastModified } from "./git";
-export { getContentDirectory, listDocFiles, readDocFile } from "./paths";
+export {
+  assertVersionDirectories,
+  getContentDirectory,
+  getContentRoot,
+  listDocFiles,
+  listVersionDirectories,
+  readDocFile,
+} from "./paths";
 
 export { DOC_CATEGORIES } from "./types";
 export type {

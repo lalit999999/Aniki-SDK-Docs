@@ -9,7 +9,7 @@ import type {
   PhrasingContent,
   RootContent,
 } from "mdast";
-
+import { HeadingAnchor } from "@/components/docs/heading-anchor";
 import { parseMarkdown } from "@/lib/content";
 import type { Doc, DocHeading } from "@/lib/content";
 
@@ -31,8 +31,15 @@ import type { Doc, DocHeading } from "@/lib/content";
  * from `doc.headings`, which is the same array `TableOfContents` and
  * `rehype-slug`-equivalent extraction already produced. This guarantees
  * every anchor the TOC links to exists in the rendered output.
+ *
+ * `afterTitle` renders immediately after the `<h1>` (D11 in the Step 6
+ * spec) - the metadata bar's natural position - without this component
+ * needing to know anything about what it renders. That keeps the
+ * documented contract intact: everything else here (headings, TOC, pager)
+ * can be swapped for a real markdown renderer later without touching the
+ * layout.
  */
-export function DocsContent({ doc }: { doc: Doc }) {
+export function DocsContent({ doc, afterTitle }: { doc: Doc; afterTitle?: React.ReactNode }) {
   const tree = parseMarkdown(doc.content, doc.meta.filePath);
   const headingQueue = [...doc.headings];
 
@@ -41,9 +48,10 @@ export function DocsContent({ doc }: { doc: Doc }) {
       <h1 className="mb-6 font-heading text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
         {doc.meta.title}
       </h1>
+      {afterTitle}
       <div className="flex flex-col gap-4 text-base leading-7 text-foreground">
         {tree.children.map((node, index) => (
-          <BlockNode key={index} node={node} headingQueue={headingQueue} />
+          <BlockNode key={index} node={node} headingQueue={headingQueue} route={doc.meta.route} />
         ))}
       </div>
     </article>
@@ -53,13 +61,15 @@ export function DocsContent({ doc }: { doc: Doc }) {
 function BlockNode({
   node,
   headingQueue,
+  route,
 }: {
   node: RootContent;
   headingQueue: DocHeading[];
+  route: string;
 }) {
   switch (node.type) {
     case "heading":
-      return <HeadingBlock node={node} headingQueue={headingQueue} />;
+      return <HeadingBlock node={node} headingQueue={headingQueue} route={route} />;
     case "paragraph":
       return <p className="text-muted-foreground">{renderInline(node.children)}</p>;
     case "list":
@@ -74,7 +84,7 @@ function BlockNode({
       return (
         <blockquote className="rounded-md border-l-4 border-primary bg-muted/50 py-2 pl-4 text-muted-foreground">
           {node.children.map((child, index) => (
-            <BlockNode key={index} node={child} headingQueue={headingQueue} />
+            <BlockNode key={index} node={child} headingQueue={headingQueue} route={route} />
           ))}
         </blockquote>
       );
@@ -98,9 +108,11 @@ function BlockNode({
 function HeadingBlock({
   node,
   headingQueue,
+  route,
 }: {
   node: Heading;
   headingQueue: DocHeading[];
+  route: string;
 }) {
   if (node.depth < 2 || node.depth > 4) {
     return null;
@@ -115,8 +127,14 @@ function HeadingBlock({
         : "text-lg";
 
   return (
-    <Tag id={heading?.id} className={`font-heading font-semibold tracking-tight text-foreground ${sizeClass}`}>
-      {renderInline(node.children)}
+    <Tag
+      id={heading?.id}
+      className={`group font-heading font-semibold tracking-tight text-foreground ${sizeClass}`}
+    >
+      <span className="inline-flex items-center gap-2">
+        {renderInline(node.children)}
+        {heading !== undefined && <HeadingAnchor id={heading.id} text={heading.text} route={route} />}
+      </span>
     </Tag>
   );
 }
@@ -131,7 +149,7 @@ function ListBlock({ node }: { node: List }) {
             child.type === "paragraph" ? (
               <span key={childIndex}>{renderInline(child.children)}</span>
             ) : (
-              <BlockNode key={childIndex} node={child} headingQueue={[]} />
+              <BlockNode key={childIndex} node={child} headingQueue={[]} route="" />
             ),
           )}
         </li>

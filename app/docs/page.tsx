@@ -1,7 +1,9 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 
+import { DocsBreadcrumbs } from "@/components/docs/docs-breadcrumbs";
 import { getAllDocMeta, getDocBySlug } from "@/lib/content";
+import { categoryAnchorId } from "@/lib/navigation";
 
 export async function generateMetadata(): Promise<Metadata> {
   const index = await getDocBySlug("index");
@@ -24,14 +26,15 @@ export default async function DocsIndexPage() {
 
   return (
     <article className="min-w-0 py-8 xl:col-span-2">
-      <h1 className="mb-3 font-heading text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+      <DocsBreadcrumbs doc={null} />
+      <h1 className="mt-3 mb-3 font-heading text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
         {index.meta.title}
       </h1>
       <p className="mb-10 max-w-2xl text-lg text-muted-foreground">{index.meta.description}</p>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {categories.map((category) => (
-          <section key={category} className="rounded-lg border border-border p-5">
+          <section key={category} id={categoryAnchorId(category)} className="scroll-mt-24 rounded-lg border border-border p-5">
             <h2 className="mb-3 font-heading text-sm font-semibold tracking-wide text-muted-foreground uppercase">
               {category}
             </h2>

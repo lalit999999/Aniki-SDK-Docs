@@ -1,22 +1,22 @@
 import Link from "next/link";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { GithubIcon, Search01Icon } from "@hugeicons/core-free-icons";
+import { GithubIcon } from "@hugeicons/core-free-icons";
 
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { HeaderShell } from "@/components/docs/header-shell";
 import { MobileSidebar } from "@/components/docs/mobile-sidebar";
+import { SearchTrigger } from "@/components/search/search-trigger";
 import { ThemeToggle } from "@/components/docs/theme-toggle";
 import { siteConfig } from "@/config/site";
 import type { DocNavCategory } from "@/lib/content";
 
 /**
  * The site-wide header: sticky, transparent at the top of the page and
- * blurred once scrolled (`HeaderShell`), with the logo, primary nav, a
- * disabled search placeholder, GitHub link, theme toggle, and - on small
- * viewports - the documentation drawer trigger. Stays a Server Component;
- * only the pieces that need the browser (`HeaderShell`, `MobileSidebar`,
- * `ThemeToggle`) are client leaves.
+ * blurred once scrolled (`HeaderShell`), with the logo, primary nav, the
+ * `⌘K` search trigger, GitHub link, theme toggle, and - on small viewports -
+ * the documentation drawer trigger. Stays a Server Component; only the
+ * pieces that need the browser (`HeaderShell`, `MobileSidebar`,
+ * `SearchTrigger`, `ThemeToggle`) are client leaves.
  */
 export function DocsHeader({ nav }: { nav: DocNavCategory[] }) {
   return (
@@ -40,14 +40,7 @@ export function DocsHeader({ nav }: { nav: DocNavCategory[] }) {
         </nav>
 
         <div className="ml-auto flex items-center gap-1">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" aria-disabled aria-label="Search (coming soon)" disabled>
-                <HugeiconsIcon icon={Search01Icon} strokeWidth={2} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Coming soon</TooltipContent>
-          </Tooltip>
+          <SearchTrigger />
 
           <Button asChild variant="ghost" size="icon" aria-label="View on GitHub">
             <a href={siteConfig.links.sdkRepo} target="_blank" rel="noreferrer noopener">
