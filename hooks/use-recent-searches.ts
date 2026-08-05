@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useMemo, useSyncExternalStore } from "react";
 
 import {
   addRecentSearch,
@@ -10,9 +10,7 @@ import {
   writeRecentSearches,
 } from "@/lib/search/recent-searches";
 
-/** Stable across renders and across the SSR/first-client-render snapshot -
- * `useSyncExternalStore` re-renders in an infinite loop if `getSnapshot`
- * returns a fresh array identity on every call. */
+/** Stable across renders and across the SSR/first-client-render snapshot. */
 const EMPTY_RECENT_SEARCHES: readonly string[] = Object.freeze([]);
 
 type Listener = () => void;
@@ -40,17 +38,16 @@ function subscribe(onStoreChange: Listener): () => void {
   };
 }
 
-function getSnapshot(): readonly string[] {
+function getSnapshot(): string | null {
   try {
-    const list = readRecentSearches(window.localStorage);
-    return list.length === 0 ? EMPTY_RECENT_SEARCHES : list;
+    return window.localStorage.getItem(RECENT_SEARCHES_KEY);
   } catch {
-    return EMPTY_RECENT_SEARCHES;
+    return null;
   }
 }
 
-function getServerSnapshot(): readonly string[] {
-  return EMPTY_RECENT_SEARCHES;
+function getServerSnapshot(): string | null {
+  return null;
 }
 
 export interface UseRecentSearchesResult {
@@ -77,7 +74,22 @@ export interface UseRecentSearchesResult {
  * ```
  */
 export function useRecentSearches(): UseRecentSearchesResult {
-  const recent = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const raw = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+
+  const recentSearches = useMemo(() => {
+    if (raw === null) {
+      return EMPTY_RECENT_SEARCHES;
+    }
+
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      return Array.isArray(parsed) && parsed.every((item) => typeof item === "string")
+        ? parsed
+        : EMPTY_RECENT_SEARCHES;
+    } catch {
+      return EMPTY_RECENT_SEARCHES;
+    }
+  }, [raw]);
 
   const add = useCallback((query: string) => {
     try {
@@ -99,5 +111,5 @@ export function useRecentSearches(): UseRecentSearchesResult {
     emitLocalChange();
   }, []);
 
-  return { recent, add, clear };
+  return { recent: recentSearches, add, clear };
 }
