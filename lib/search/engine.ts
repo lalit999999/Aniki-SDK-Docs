@@ -7,46 +7,24 @@
  * without any component needing to change - see D1.
  */
 
+import { buildSnippet, highlight } from "./highlight";
 import { compileSection, scoreSection } from "./score";
 import type { CompiledSection } from "./score";
 import { tokenizeQuery } from "./tokenize";
-import type { HighlightSegment, SearchEngine, SearchIndex, SearchOptions, SearchResult, SearchSnippet } from "./types";
+import type { SearchEngine, SearchIndex, SearchOptions, SearchResult } from "./types";
 
 const DEFAULT_LIMIT = 8;
 const DEFAULT_MAX_PER_DOCUMENT = 3;
 const MIN_QUERY_LENGTH = 2;
-/** Placeholder snippet window, superseded by `buildSnippet` in sub-task 5. */
-const PLACEHOLDER_SNIPPET_LIMIT = 180;
 
-function wholeFieldSegments(text: string): HighlightSegment[] {
-  return [{ text, match: false }];
-}
-
-/**
- * Builds a plain, unhighlighted snippet from the head of a section's
- * content. Replaced by the diacritic-aware `buildSnippet` once
- * `lib/search/highlight.ts` lands (sub-task 5) - kept here as a real,
- * working fallback rather than an empty stub so `createSearchEngine` is
- * fully functional and testable on its own.
- */
-function placeholderSnippet(content: string): SearchSnippet {
-  if (content.length <= PLACEHOLDER_SNIPPET_LIMIT) {
-    return { segments: wholeFieldSegments(content), truncatedStart: false, truncatedEnd: false };
-  }
-  const truncated = content.slice(0, PLACEHOLDER_SNIPPET_LIMIT);
-  const lastSpace = truncated.lastIndexOf(" ");
-  const text = lastSpace > 0 ? truncated.slice(0, lastSpace) : truncated;
-  return { segments: wholeFieldSegments(text), truncatedStart: false, truncatedEnd: true };
-}
-
-function toResult(compiled: CompiledSection, score: number): SearchResult {
+function toResult(compiled: CompiledSection, score: number, tokens: readonly string[]): SearchResult {
   const { section } = compiled;
   return {
     section,
     score,
-    titleSegments: wholeFieldSegments(section.docTitle),
-    headingSegments: section.headingText !== null ? wholeFieldSegments(section.headingText) : null,
-    snippet: placeholderSnippet(section.content),
+    titleSegments: highlight(section.docTitle, tokens),
+    headingSegments: section.headingText !== null ? highlight(section.headingText, tokens) : null,
+    snippet: buildSnippet(section.content, tokens),
   };
 }
 
@@ -101,7 +79,7 @@ export function createSearchEngine(index: SearchIndex): SearchEngine {
           continue;
         }
         perDocumentCount.set(docSlug, count + 1);
-        results.push(toResult(compiled, score));
+        results.push(toResult(compiled, score, tokens));
         if (results.length >= limit) {
           break;
         }

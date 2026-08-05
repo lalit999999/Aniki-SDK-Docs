@@ -11,6 +11,23 @@ const NON_ALPHANUMERIC_PATTERN = /[^\p{L}\p{N}]+/gu;
 const IDENTIFIER_BOUNDARY_PATTERN = /[_.\-\s]+|(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/g;
 
 /**
+ * Folds a single character the same way `normalize` folds a whole string:
+ * NFKD decomposition, diacritic stripping, lowercasing. Exposed
+ * separately so `lib/search/highlight.ts` can fold one character at a
+ * time while building an original-offset map - `normalize`'s whole-string
+ * form has no way to report which output character came from which input
+ * position.
+ *
+ * @example
+ * ```ts
+ * normalizeChar("É"); // "e"
+ * ```
+ */
+export function normalizeChar(ch: string): string {
+  return ch.normalize("NFKD").replace(COMBINING_MARKS_PATTERN, "").toLowerCase();
+}
+
+/**
  * Normalises text for matching: Unicode NFKD decomposition, diacritic
  * stripping, lowercasing, and whitespace collapsing.
  *

@@ -35,7 +35,10 @@ export type { CompiledSection } from "./score";
 
 export { createSearchEngine } from "./engine";
 
-export { normalize, splitIdentifier, tokenize, tokenizeQuery } from "./tokenize";
+export { buildSnippet, highlight } from "./highlight";
+export type { BuildSnippetOptions } from "./highlight";
+
+export { normalize, normalizeChar, splitIdentifier, tokenize, tokenizeQuery } from "./tokenize";
 export type { TokenizedQuery } from "./tokenize";
 
 export { SEARCH_INDEX_VERSION } from "./types";
