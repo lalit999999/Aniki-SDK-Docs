@@ -7,7 +7,8 @@ function doc(slug: string, category: DocCategory, order: number): DocMeta {
   return {
     slug,
     route: slug === "index" ? "/docs" : `/docs/${slug}`,
-    filePath: `content/docs/${slug}.md`,
+    versionedRoute: slug === "index" ? "/docs/v1" : `/docs/v1/${slug}`,
+    filePath: `content/docs/v1/${slug}.md`,
     title: slug,
     description: slug,
     category,
@@ -17,6 +18,8 @@ function doc(slug: string, category: DocCategory, order: number): DocMeta {
     updatedAt: null,
     updatedSource: "unknown",
     readingTime: { minutes: 1, words: 1, text: "1 min read" },
+    version: "v1",
+    isLatestVersion: true,
   };
 }
 

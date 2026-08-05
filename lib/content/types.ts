@@ -117,9 +117,13 @@ export interface TocNode extends DocHeading {
 export interface DocMeta {
   /** URL-safe identifier derived from the filename (`README.md` -> `index`). */
   slug: string;
-  /** Route this document resolves to: `/docs` for the index, otherwise
-   * `/docs/<slug>`. */
+  /** Route this document resolves to (D4): unprefixed (`/docs`, `/docs/<slug>`)
+   * when `version` is the latest version, otherwise prefixed
+   * (`/docs/<version>`, `/docs/<version>/<slug>`). */
   route: string;
+  /** This document's route, always prefixed with `version` regardless of
+   * whether that version is currently latest - see `slugToVersionedRoute`. */
+  versionedRoute: string;
   /** Path to the source file, relative to the repository root. */
   filePath: string;
   title: string;
@@ -132,6 +136,10 @@ export interface DocMeta {
   updatedAt: string | null;
   updatedSource: UpdatedSource;
   readingTime: DocReadingTime;
+  /** Id of the documentation version this document belongs to. */
+  version: string;
+  /** Whether `version` is the current latest version. */
+  isLatestVersion: boolean;
 }
 
 /**

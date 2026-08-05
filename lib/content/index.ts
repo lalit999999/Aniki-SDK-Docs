@@ -25,10 +25,12 @@ export {
   getAdjacentDocs,
   getAllDocMeta,
   getAllDocs,
+  getAllVersionedRoutes,
   getDocBySlug,
   getDocNavigation,
   getDocRoutes,
   getDocSlugs,
+  getDocVersions,
   getDocsByCategory,
 } from "./loader";
 

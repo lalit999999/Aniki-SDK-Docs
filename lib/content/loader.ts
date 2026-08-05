@@ -1,33 +1,38 @@
 /**
- * Orchestration layer: reads every file in `content/docs`, validates its
- * frontmatter, parses its markdown, and assembles the `Doc` objects the
- * public API in `index.ts` serves.
+ * Orchestration layer: reads every file in a version's content directory,
+ * validates its frontmatter, parses its markdown, and assembles the `Doc`
+ * objects the public API in `index.ts` serves.
  *
  * Not exported directly - `index.ts` is the public surface. Importing
  * from this module elsewhere in the app bypasses the `server-only` guard
  * and the documented contract of what's safe to call from where.
+ *
+ * Every function below takes an optional trailing `versionId`, defaulting
+ * to the latest version (D8) - existing call sites that never mention
+ * versioning keep compiling and behaving exactly as before.
  */
 
 import path from "node:path";
 
 import matter from "gray-matter";
 
-import { getLatestVersion } from "@/lib/versions/registry";
+import { getLatestVersion, getVersions, resolveVersionId } from "@/lib/versions/registry";
+import type { DocsVersionSummary } from "@/lib/versions/types";
 
+import { assertVersionDirectories, listDocFiles, readDocFile } from "./paths";
 import { ContentNotFoundError, DuplicateSlugError } from "./errors";
 import { resolveLastModified } from "./git";
 import { extractHeadings, extractLeadingH1, parseMarkdown, stripLeadingH1 } from "./headings";
-import { listDocFiles, readDocFile } from "./paths";
 import { calculateReadingTime } from "./reading-time";
 import { parsePartialFrontmatter } from "./schema";
-import { fileNameToSlug, slugToRoute, slugToTitle } from "./slug";
+import { fileNameToSlug, slugToRoute, slugToTitle, slugToVersionedRoute } from "./slug";
 import { buildToc } from "./toc";
 import { DOC_CATEGORIES } from "./types";
 import type { AdjacentDocs, Doc, DocCategory, DocMeta, DocNavCategory } from "./types";
 
 const FALLBACK_CATEGORY: DocCategory = "Reference";
 
-async function buildDoc(filePath: string): Promise<Doc> {
+async function buildDoc(filePath: string, versionId: string): Promise<Doc> {
   const raw = await readDocFile(filePath);
   const parsed = matter(raw);
   const frontmatter = parsePartialFrontmatter(parsed.data, filePath);
@@ -55,7 +60,8 @@ async function buildDoc(filePath: string): Promise<Doc> {
 
   const meta: DocMeta = {
     slug,
-    route: slugToRoute(slug),
+    route: slugToRoute(slug, versionId),
+    versionedRoute: slugToVersionedRoute(slug, versionId),
     filePath: path.relative(process.cwd(), filePath),
     title,
     description,
@@ -66,6 +72,8 @@ async function buildDoc(filePath: string): Promise<Doc> {
     updatedAt,
     updatedSource,
     readingTime,
+    version: versionId,
+    isLatestVersion: versionId === getLatestVersion().id,
   };
 
   return {
@@ -89,15 +97,17 @@ function isVisible(doc: Doc): boolean {
   return !doc.meta.draft || process.env.NODE_ENV !== "production";
 }
 
-let cachedIndex: Doc[] | null = null;
+const cachedIndexes = new Map<string, Doc[]>();
 
-async function buildIndex(): Promise<Doc[]> {
-  if (process.env.NODE_ENV === "production" && cachedIndex !== null) {
-    return cachedIndex;
+async function buildIndex(versionId?: string): Promise<Doc[]> {
+  const resolvedVersionId = resolveVersionId(versionId);
+
+  if (process.env.NODE_ENV === "production" && cachedIndexes.has(resolvedVersionId)) {
+    return cachedIndexes.get(resolvedVersionId) as Doc[];
   }
 
-  const files = await listDocFiles(getLatestVersion().id);
-  const docs = await Promise.all(files.map((file) => buildDoc(file)));
+  const files = await listDocFiles(resolvedVersionId);
+  const docs = await Promise.all(files.map((file) => buildDoc(file, resolvedVersionId)));
 
   const filePathsBySlug = new Map<string, string[]>();
   for (const doc of docs) {
@@ -107,22 +117,25 @@ async function buildIndex(): Promise<Doc[]> {
   }
   for (const [slug, filePaths] of filePathsBySlug) {
     if (filePaths.length > 1) {
-      throw new DuplicateSlugError(`duplicate slug "${slug}"`, { slug, filePaths });
+      throw new DuplicateSlugError(`duplicate slug "${slug}" in version "${resolvedVersionId}"`, {
+        slug,
+        filePaths,
+      });
     }
   }
 
   docs.sort((a, b) => compareDocMeta(a.meta, b.meta));
 
   if (process.env.NODE_ENV === "production") {
-    cachedIndex = docs;
+    cachedIndexes.set(resolvedVersionId, docs);
   }
 
   return docs;
 }
 
 /**
- * Clears the production-only content cache. Intended for tests that need
- * each case to see a fresh read of disk.
+ * Clears the production-only content cache for every version. Intended for
+ * tests that need each case to see a fresh read of disk.
  *
  * @example
  * ```ts
@@ -130,18 +143,20 @@ async function buildIndex(): Promise<Doc[]> {
  * ```
  */
 export function clearContentCache(): void {
-  cachedIndex = null;
+  cachedIndexes.clear();
 }
 
 /**
- * Loads every non-draft document, sorted by category order then
- * `order`. Draft documents are included in development and excluded in
- * production.
+ * Loads every non-draft document in a version, sorted by category order
+ * then `order`. Draft documents are included in development and excluded
+ * in production. Omitting `versionId` resolves the latest version.
  *
- * @throws {ContentDirectoryError} if `content/docs` can't be read.
+ * @throws {ContentDirectoryError} if the version's directory can't be read.
  * @throws {FrontmatterValidationError} if any file's frontmatter is invalid.
- * @throws {DuplicateSlugError} if two files resolve to the same slug.
+ * @throws {DuplicateSlugError} if two files in the version resolve to the
+ * same slug.
  * @throws {MarkdownParseError} if a file's markdown can't be parsed.
+ * @throws {UnknownVersionError} if `versionId` is given but not declared.
  *
  * @example
  * ```ts
@@ -149,14 +164,14 @@ export function clearContentCache(): void {
  * console.log(docs.length); // 16
  * ```
  */
-export async function getAllDocs(): Promise<Doc[]> {
-  const docs = await buildIndex();
+export async function getAllDocs(versionId?: string): Promise<Doc[]> {
+  const docs = await buildIndex(versionId);
   return docs.filter(isVisible);
 }
 
 /**
- * Loads metadata only for every visible document - cheaper than
- * `getAllDocs` when content isn't needed, e.g. for navigation or a
+ * Loads metadata only for every visible document in a version - cheaper
+ * than `getAllDocs` when content isn't needed, e.g. for navigation or a
  * sitemap.
  *
  * @throws Same as {@link getAllDocs}.
@@ -166,48 +181,51 @@ export async function getAllDocs(): Promise<Doc[]> {
  * const meta = await getAllDocMeta();
  * ```
  */
-export async function getAllDocMeta(): Promise<DocMeta[]> {
-  const docs = await getAllDocs();
+export async function getAllDocMeta(versionId?: string): Promise<DocMeta[]> {
+  const docs = await getAllDocs(versionId);
   return docs.map((doc) => doc.meta);
 }
 
 /**
- * Slugs of every visible document, in navigation order.
+ * Slugs of every visible document in a version, in navigation order.
  *
  * @throws Same as {@link getAllDocs}.
  */
-export async function getDocSlugs(): Promise<string[]> {
-  const metas = await getAllDocMeta();
+export async function getDocSlugs(versionId?: string): Promise<string[]> {
+  const metas = await getAllDocMeta(versionId);
   return metas.map((meta) => meta.slug);
 }
 
 /**
- * Routes of every visible document, shaped for use in a
- * `generateStaticParams` implementation in Step 3.
+ * Routes of every visible document in a version.
  *
  * @throws Same as {@link getAllDocs}.
  */
-export async function getDocRoutes(): Promise<string[]> {
-  const metas = await getAllDocMeta();
+export async function getDocRoutes(versionId?: string): Promise<string[]> {
+  const metas = await getAllDocMeta(versionId);
   return metas.map((meta) => meta.route);
 }
 
 /**
- * Loads a single document by slug, regardless of draft status.
+ * Loads a single document by slug within a version, regardless of draft
+ * status.
  *
- * @throws {ContentNotFoundError} if no file resolves to `slug`. The error
- * lists every known slug so a caller can suggest alternatives.
+ * @throws {ContentNotFoundError} if no file in the version resolves to
+ * `slug`. The error lists every known slug in that version so a caller can
+ * suggest alternatives.
  *
  * @example
  * ```ts
  * const doc = await getDocBySlug("guides");
+ * const v1Doc = await getDocBySlug("guides", "v1");
  * ```
  */
-export async function getDocBySlug(slug: string): Promise<Doc> {
-  const docs = await buildIndex();
+export async function getDocBySlug(slug: string, versionId?: string): Promise<Doc> {
+  const resolvedVersionId = resolveVersionId(versionId);
+  const docs = await buildIndex(resolvedVersionId);
   const found = docs.find((doc) => doc.meta.slug === slug);
   if (found === undefined) {
-    throw new ContentNotFoundError(`no document for slug "${slug}"`, {
+    throw new ContentNotFoundError(`no document for slug "${slug}" in version "${resolvedVersionId}"`, {
       slug,
       availableSlugs: docs.map((doc) => doc.meta.slug),
     });
@@ -225,13 +243,14 @@ export async function getDocBySlug(slug: string): Promise<Doc> {
  * if (doc === null) notFound();
  * ```
  */
-export async function findDocBySlug(slug: string): Promise<Doc | null> {
-  const docs = await buildIndex();
+export async function findDocBySlug(slug: string, versionId?: string): Promise<Doc | null> {
+  const docs = await buildIndex(versionId);
   return docs.find((doc) => doc.meta.slug === slug) ?? null;
 }
 
 /**
- * Metadata for every visible document in a given category, in `order`.
+ * Metadata for every visible document in a category, within a version, in
+ * `order`.
  *
  * @throws Same as {@link getAllDocs}.
  *
@@ -240,14 +259,14 @@ export async function findDocBySlug(slug: string): Promise<Doc | null> {
  * const referenceDocs = await getDocsByCategory("Reference");
  * ```
  */
-export async function getDocsByCategory(category: DocCategory): Promise<DocMeta[]> {
-  const metas = await getAllDocMeta();
+export async function getDocsByCategory(category: DocCategory, versionId?: string): Promise<DocMeta[]> {
+  const metas = await getAllDocMeta(versionId);
   return metas.filter((meta) => meta.category === category);
 }
 
 /**
- * The full sidebar tree: every category in `DOC_CATEGORIES` order, each
- * with its visible documents in `order`.
+ * The full sidebar tree for a version: every category in `DOC_CATEGORIES`
+ * order, each with its visible documents in `order`.
  *
  * @throws Same as {@link getAllDocs}.
  *
@@ -257,8 +276,8 @@ export async function getDocsByCategory(category: DocCategory): Promise<DocMeta[
  * // [{ category: "Getting Started", docs: [...] }, ...]
  * ```
  */
-export async function getDocNavigation(): Promise<DocNavCategory[]> {
-  const metas = await getAllDocMeta();
+export async function getDocNavigation(versionId?: string): Promise<DocNavCategory[]> {
+  const metas = await getAllDocMeta(versionId);
   return DOC_CATEGORIES.map((category) => ({
     category,
     docs: metas.filter((meta) => meta.category === category),
@@ -266,22 +285,24 @@ export async function getDocNavigation(): Promise<DocNavCategory[]> {
 }
 
 /**
- * The documents immediately before and after `slug` in flattened
- * navigation order, crossing category boundaries. Either side is `null`
- * at the start/end of the document set.
+ * The documents immediately before and after `slug` in a version's
+ * flattened navigation order, crossing category boundaries. Either side is
+ * `null` at the start/end of that version's document set.
  *
- * @throws {ContentNotFoundError} if `slug` isn't a visible document.
+ * @throws {ContentNotFoundError} if `slug` isn't a visible document in the
+ * version.
  *
  * @example
  * ```ts
  * const { previous, next } = await getAdjacentDocs("tools");
  * ```
  */
-export async function getAdjacentDocs(slug: string): Promise<AdjacentDocs> {
-  const metas = await getAllDocMeta();
+export async function getAdjacentDocs(slug: string, versionId?: string): Promise<AdjacentDocs> {
+  const resolvedVersionId = resolveVersionId(versionId);
+  const metas = await getAllDocMeta(resolvedVersionId);
   const index = metas.findIndex((meta) => meta.slug === slug);
   if (index === -1) {
-    throw new ContentNotFoundError(`no document for slug "${slug}"`, {
+    throw new ContentNotFoundError(`no document for slug "${slug}" in version "${resolvedVersionId}"`, {
       slug,
       availableSlugs: metas.map((meta) => meta.slug),
     });
@@ -290,4 +311,82 @@ export async function getAdjacentDocs(slug: string): Promise<AdjacentDocs> {
     previous: metas[index - 1] ?? null,
     next: metas[index + 1] ?? null,
   };
+}
+
+/**
+ * Summarizes every declared documentation version with its live document
+ * count and index route, after validating that the registry and the
+ * on-disk content directories agree (D3).
+ *
+ * @throws {VersionConfigError} if a declared version has no directory, or
+ * a directory has no declared version.
+ *
+ * @example
+ * ```ts
+ * const versions = await getDocVersions();
+ * // [{ id: "v1", label: "v1.0", status: "latest", docCount: 16, indexRoute: "/docs", ... }]
+ * ```
+ */
+export async function getDocVersions(): Promise<DocsVersionSummary[]> {
+  await assertVersionDirectories();
+
+  const versions = getVersions();
+  const summaries = await Promise.all(
+    versions.map(async (version): Promise<DocsVersionSummary> => {
+      const docs = await getAllDocs(version.id);
+      return {
+        ...version,
+        docCount: docs.length,
+        indexRoute: slugToRoute("index", version.id),
+      };
+    }),
+  );
+
+  return summaries;
+}
+
+/**
+ * Every page in every documentation version, shaped for
+ * `generateStaticParams` on the `[...slug]` catch-all route (D5/D6). The
+ * latest version's pages are emitted with unprefixed segments (`[]` for
+ * its index, `[slug]` for a page); every other version's pages are emitted
+ * with a leading version segment (`[versionId]`, `[versionId, slug]`) -
+ * the latest version's *prefixed* aliases are handled by redirects in
+ * `next.config.ts` instead of being emitted here, so there is exactly one
+ * static path per page (D6).
+ *
+ * @throws Same as {@link getAllDocs}, for any version.
+ *
+ * @example
+ * ```ts
+ * const routes = await getAllVersionedRoutes();
+ * // [{ versionId: "v1", slug: "index", segments: [] },
+ * //  { versionId: "v1", slug: "tools", segments: ["tools"] }]
+ * ```
+ */
+export async function getAllVersionedRoutes(): Promise<
+  { versionId: string; slug: string; segments: string[] }[]
+> {
+  const latestId = getLatestVersion().id;
+  const versions = getVersions();
+
+  const perVersion = await Promise.all(
+    versions.map(async (version) => {
+      const metas = await getAllDocMeta(version.id);
+      return metas.map((meta) => {
+        const isLatest = version.id === latestId;
+        const segments =
+          meta.slug === "index"
+            ? isLatest
+              ? []
+              : [version.id]
+            : isLatest
+              ? [meta.slug]
+              : [version.id, meta.slug];
+        return { versionId: version.id, slug: meta.slug, segments };
+      });
+    }),
+  );
+
+  return perVersion.flat();
 }

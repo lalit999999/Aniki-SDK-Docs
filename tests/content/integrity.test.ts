@@ -122,4 +122,22 @@ describe("content integrity", () => {
   it("rejects an unknown slug with ContentNotFoundError", async () => {
     await expect(getDocBySlug("does-not-exist")).rejects.toBeInstanceOf(ContentNotFoundError);
   });
+
+  it("tags every document with version \"v1\" and isLatestVersion true", async () => {
+    const docs = await getAllDocs();
+    for (const doc of docs) {
+      expect(doc.meta.version).toBe("v1");
+      expect(doc.meta.isLatestVersion).toBe(true);
+    }
+  });
+
+  it("keeps route unprefixed while versionedRoute is always prefixed with v1", async () => {
+    const doc = await getDocBySlug("tools");
+    expect(doc.meta.route).toBe("/docs/tools");
+    expect(doc.meta.versionedRoute).toBe("/docs/v1/tools");
+
+    const index = await getDocBySlug("index");
+    expect(index.meta.route).toBe("/docs");
+    expect(index.meta.versionedRoute).toBe("/docs/v1");
+  });
 });
