@@ -46,5 +46,8 @@ export const siteConfig: SiteConfig = {
     docsRepo: "https://github.com/lalit999999/Aniki-SDK-Docs",
     sdkRepo: "https://github.com/lalit999999/Aniki-SDK",
   },
-  primaryNav: [{ label: "Docs", href: "/docs" }],
+  primaryNav: [
+    { label: "Docs", href: "/docs" },
+    { label: "Changelog", href: "/changelog" },
+  ],
 };

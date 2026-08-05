@@ -83,7 +83,8 @@ export function useRecentSearches(): UseRecentSearchesResult {
 
     try {
       const parsed: unknown = JSON.parse(raw);
-      return Array.isArray(parsed) && parsed.every((item) => typeof item === "string")
+      return Array.isArray(parsed) &&
+        parsed.every((item) => typeof item === "string")
         ? parsed
         : EMPTY_RECENT_SEARCHES;
     } catch {
