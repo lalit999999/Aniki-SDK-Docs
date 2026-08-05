@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { CheckmarkCircle01Icon, Copy01Icon } from "@hugeicons/core-free-icons";
+
+import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 
 /**
  * A one-line "npm install ..." command with a copy button. Degrades
@@ -10,26 +11,12 @@ import { CheckmarkCircle01Icon, Copy01Icon } from "@hugeicons/core-free-icons";
  * when the Clipboard API isn't available.
  */
 export function CopyCommand({ command }: { command: string }) {
-  const [status, setStatus] = useState<"idle" | "copied" | "failed">("idle");
-
-  async function copy() {
-    try {
-      if (!navigator.clipboard) {
-        throw new Error("Clipboard API unavailable");
-      }
-      await navigator.clipboard.writeText(command);
-      setStatus("copied");
-    } catch {
-      setStatus("failed");
-    } finally {
-      setTimeout(() => setStatus("idle"), 2000);
-    }
-  }
+  const { status, copy } = useCopyToClipboard();
 
   return (
     <button
       type="button"
-      onClick={copy}
+      onClick={() => copy(command)}
       className="group flex items-center gap-3 rounded-lg border border-border bg-muted px-4 py-2.5 font-mono text-sm text-foreground transition-colors hover:bg-muted/70"
     >
       <span>{command}</span>
