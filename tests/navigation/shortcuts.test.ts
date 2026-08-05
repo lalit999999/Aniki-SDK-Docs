@@ -59,18 +59,13 @@ describe("matchShortcut", () => {
     expect(matchShortcut(key({ key: "]", ctrlKey: true }), BODY)).toBeNull();
   });
 
-  it("matches Cmd+K and Ctrl+K to open-palette, even while typing", () => {
-    expect(matchShortcut(key({ key: "k", metaKey: true }), BODY)).toBe("open-palette");
-    expect(matchShortcut(key({ key: "k", ctrlKey: true }), BODY)).toBe("open-palette");
-    expect(matchShortcut(key({ key: "k", metaKey: true }), INPUT)).toBe("open-palette");
+  it("never matches Cmd+K or Ctrl+K - that hotkey belongs to the search dialog", () => {
+    expect(matchShortcut(key({ key: "k", metaKey: true }), BODY)).toBeNull();
+    expect(matchShortcut(key({ key: "k", ctrlKey: true }), BODY)).toBeNull();
   });
 
-  it("does not match Alt+Cmd+K", () => {
-    expect(matchShortcut(key({ key: "k", metaKey: true, altKey: true }), BODY)).toBeNull();
-  });
-
-  it("matches / to open-palette, but not while typing", () => {
-    expect(matchShortcut(key({ key: "/" }), BODY)).toBe("open-palette");
+  it("does not match a bare / - that hotkey also belongs to the search dialog", () => {
+    expect(matchShortcut(key({ key: "/" }), BODY)).toBeNull();
     expect(matchShortcut(key({ key: "/" }), INPUT)).toBeNull();
   });
 });

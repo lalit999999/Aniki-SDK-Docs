@@ -1,6 +1,10 @@
 /**
  * Public entry point for shared navigation logic - breadcrumbs, adjacent-doc
- * lookup, keyboard shortcuts, and the command palette.
+ * lookup, and keyboard shortcuts. The command palette moved to
+ * `@/lib/search` and `@/components/search` - full-text section search
+ * superseded the page-only navigation palette this module used to also
+ * export (`buildPaletteItems`), so there is no palette-building logic left
+ * here.
  *
  * Every module re-exported here is client-safe by construction: none of them
  * import `server-only` or `@/lib/content`, and all take their document types
@@ -17,6 +21,3 @@ export { flattenNav, findAdjacentByRoute } from "./adjacent";
 
 export { isTypingTarget, matchShortcut, SHORTCUTS } from "./shortcuts";
 export type { ShortcutAction, ShortcutDefinition, ShortcutEvent, ShortcutTarget } from "./shortcuts";
-
-export { buildPaletteItems } from "./palette";
-export type { PaletteItem } from "./palette";

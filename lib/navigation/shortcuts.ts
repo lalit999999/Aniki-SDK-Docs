@@ -28,8 +28,11 @@ export interface ShortcutTarget {
   isContentEditable: boolean;
 }
 
-/** Every action a keyboard shortcut can trigger. */
-export type ShortcutAction = "previous-page" | "next-page" | "toggle-help" | "open-palette";
+/** Every action a keyboard shortcut can trigger. `⌘K`/`Ctrl+K`/`/` used to
+ * open a page-navigation palette here; that palette is retired in favour
+ * of the full-text search dialog (`useSearchHotkey`), which owns those
+ * keys independently rather than through this shared action set. */
+export type ShortcutAction = "previous-page" | "next-page" | "toggle-help";
 
 /**
  * `true` when `target` is a form field or contenteditable region a shortcut
@@ -55,12 +58,11 @@ export interface ShortcutDefinition {
 }
 
 /**
- * The fixed shortcut set (see D8 in the Step 5 spec). `"open-palette"` has
- * two rows - `⌘K`/`Ctrl+K` and `/` - since either opens the palette.
+ * The fixed shortcut set (see D8 in the Step 5 spec). `⌘K`/`Ctrl+K` and
+ * `/` are deliberately absent - they open the search dialog via its own
+ * independent `useSearchHotkey` listener now, not this shared action set.
  */
 export const SHORTCUTS: readonly ShortcutDefinition[] = [
-  { keys: ["⌘", "K"], action: "open-palette", label: "Open navigation palette" },
-  { keys: ["/"], action: "open-palette", label: "Open navigation palette" },
   { keys: ["["], action: "previous-page", label: "Previous page" },
   { keys: ["]"], action: "next-page", label: "Next page" },
   { keys: ["?"], action: "toggle-help", label: "Toggle this help dialog" },
@@ -72,22 +74,13 @@ export const SHORTCUTS: readonly ShortcutDefinition[] = [
  *
  * Any combination including `altKey` always returns `null`, so a shortcut
  * here can never clobber an OS or browser accelerator that happens to share
- * a base key. `⌘K`/`Ctrl+K` is checked first and matches even while typing -
- * the modifier already makes it unambiguous, unlike a bare key a user might
- * legitimately want to type into a field. Every other shortcut, including
- * `/`, is suppressed while `target` is a typing target (see
- * `isTypingTarget`).
+ * a base key. Any `metaKey`/`ctrlKey` combination also returns `null` -
+ * `⌘K`/`Ctrl+K` belongs to the search dialog's own hotkey listener, and
+ * this function must not also claim it. Every remaining shortcut is
+ * suppressed while `target` is a typing target (see `isTypingTarget`).
  */
 export function matchShortcut(event: ShortcutEvent, target: ShortcutTarget | null): ShortcutAction | null {
-  if (event.altKey) {
-    return null;
-  }
-
-  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-    return "open-palette";
-  }
-
-  if (event.metaKey || event.ctrlKey) {
+  if (event.altKey || event.metaKey || event.ctrlKey) {
     return null;
   }
 
@@ -102,8 +95,6 @@ export function matchShortcut(event: ShortcutEvent, target: ShortcutTarget | nul
       return "next-page";
     case "?":
       return "toggle-help";
-    case "/":
-      return "open-palette";
     default:
       return null;
   }

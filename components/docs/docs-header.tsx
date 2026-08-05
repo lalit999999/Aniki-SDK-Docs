@@ -5,7 +5,7 @@ import { GithubIcon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { HeaderShell } from "@/components/docs/header-shell";
 import { MobileSidebar } from "@/components/docs/mobile-sidebar";
-import { PaletteTrigger } from "@/components/docs/palette-trigger";
+import { SearchTrigger } from "@/components/search/search-trigger";
 import { ThemeToggle } from "@/components/docs/theme-toggle";
 import { siteConfig } from "@/config/site";
 import type { DocNavCategory } from "@/lib/content";
@@ -13,10 +13,10 @@ import type { DocNavCategory } from "@/lib/content";
 /**
  * The site-wide header: sticky, transparent at the top of the page and
  * blurred once scrolled (`HeaderShell`), with the logo, primary nav, the
- * ⌘K palette trigger, GitHub link, theme toggle, and - on small viewports -
+ * `⌘K` search trigger, GitHub link, theme toggle, and - on small viewports -
  * the documentation drawer trigger. Stays a Server Component; only the
  * pieces that need the browser (`HeaderShell`, `MobileSidebar`,
- * `PaletteTrigger`, `ThemeToggle`) are client leaves.
+ * `SearchTrigger`, `ThemeToggle`) are client leaves.
  */
 export function DocsHeader({ nav }: { nav: DocNavCategory[] }) {
   return (
@@ -40,7 +40,7 @@ export function DocsHeader({ nav }: { nav: DocNavCategory[] }) {
         </nav>
 
         <div className="ml-auto flex items-center gap-1">
-          <PaletteTrigger />
+          <SearchTrigger />
 
           <Button asChild variant="ghost" size="icon" aria-label="View on GitHub">
             <a href={siteConfig.links.sdkRepo} target="_blank" rel="noreferrer noopener">
