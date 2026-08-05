@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
+import { DocMetaBar } from "@/components/docs/doc-meta-bar";
 import { DocsBreadcrumbs } from "@/components/docs/docs-breadcrumbs";
 import { DocsContent } from "@/components/docs/docs-content";
 import { EditOnGithub } from "@/components/docs/edit-on-github";
@@ -34,7 +35,13 @@ export async function generateMetadata({
     title: doc.meta.title,
     description: doc.meta.description,
     alternates: { canonical: doc.meta.route },
-    openGraph: { title: doc.meta.title, description: doc.meta.description },
+    keywords: doc.meta.tags.length > 0 ? [...doc.meta.tags] : undefined,
+    openGraph: {
+      title: doc.meta.title,
+      description: doc.meta.description,
+      type: "article",
+      modifiedTime: doc.meta.updatedAt ?? undefined,
+    },
   };
 }
 
@@ -56,7 +63,7 @@ export default async function DocPage({
       <div className="min-w-0 py-8">
         <DocsBreadcrumbs doc={doc.meta} />
         <MobileToc toc={doc.toc} />
-        <DocsContent doc={doc} />
+        <DocsContent doc={doc} afterTitle={<DocMetaBar meta={doc.meta} />} />
         <div className="mt-4 mb-8">
           <EditOnGithub slug={slug} />
         </div>

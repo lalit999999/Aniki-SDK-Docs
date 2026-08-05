@@ -33,8 +33,15 @@ import type { Doc, DocHeading } from "@/lib/content";
  * from `doc.headings`, which is the same array `TableOfContents` and
  * `rehype-slug`-equivalent extraction already produced. This guarantees
  * every anchor the TOC links to exists in the rendered output.
+ *
+ * `afterTitle` renders immediately after the `<h1>` (D11 in the Step 6
+ * spec) - the metadata bar's natural position - without this component
+ * needing to know anything about what it renders. That keeps the
+ * documented contract intact: everything else here (headings, TOC, pager)
+ * can be swapped for a real markdown renderer later without touching the
+ * layout.
  */
-export function DocsContent({ doc }: { doc: Doc }) {
+export function DocsContent({ doc, afterTitle }: { doc: Doc; afterTitle?: React.ReactNode }) {
   const tree = parseMarkdown(doc.content, doc.meta.filePath);
   const headingQueue = [...doc.headings];
 
@@ -43,6 +50,7 @@ export function DocsContent({ doc }: { doc: Doc }) {
       <h1 className="mb-6 font-heading text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
         {doc.meta.title}
       </h1>
+      {afterTitle}
       <div className="flex flex-col gap-4 text-base leading-7 text-foreground">
         {tree.children.map((node, index) => (
           <BlockNode key={index} node={node} headingQueue={headingQueue} />
