@@ -9,9 +9,7 @@ import type {
   PhrasingContent,
   RootContent,
 } from "mdast";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { HashIcon } from "@hugeicons/core-free-icons";
-
+import { HeadingAnchor } from "@/components/docs/heading-anchor";
 import { parseMarkdown } from "@/lib/content";
 import type { Doc, DocHeading } from "@/lib/content";
 
@@ -53,7 +51,7 @@ export function DocsContent({ doc, afterTitle }: { doc: Doc; afterTitle?: React.
       {afterTitle}
       <div className="flex flex-col gap-4 text-base leading-7 text-foreground">
         {tree.children.map((node, index) => (
-          <BlockNode key={index} node={node} headingQueue={headingQueue} />
+          <BlockNode key={index} node={node} headingQueue={headingQueue} route={doc.meta.route} />
         ))}
       </div>
     </article>
@@ -63,13 +61,15 @@ export function DocsContent({ doc, afterTitle }: { doc: Doc; afterTitle?: React.
 function BlockNode({
   node,
   headingQueue,
+  route,
 }: {
   node: RootContent;
   headingQueue: DocHeading[];
+  route: string;
 }) {
   switch (node.type) {
     case "heading":
-      return <HeadingBlock node={node} headingQueue={headingQueue} />;
+      return <HeadingBlock node={node} headingQueue={headingQueue} route={route} />;
     case "paragraph":
       return <p className="text-muted-foreground">{renderInline(node.children)}</p>;
     case "list":
@@ -84,7 +84,7 @@ function BlockNode({
       return (
         <blockquote className="rounded-md border-l-4 border-primary bg-muted/50 py-2 pl-4 text-muted-foreground">
           {node.children.map((child, index) => (
-            <BlockNode key={index} node={child} headingQueue={headingQueue} />
+            <BlockNode key={index} node={child} headingQueue={headingQueue} route={route} />
           ))}
         </blockquote>
       );
@@ -108,9 +108,11 @@ function BlockNode({
 function HeadingBlock({
   node,
   headingQueue,
+  route,
 }: {
   node: Heading;
   headingQueue: DocHeading[];
+  route: string;
 }) {
   if (node.depth < 2 || node.depth > 4) {
     return null;
@@ -131,15 +133,7 @@ function HeadingBlock({
     >
       <span className="inline-flex items-center gap-2">
         {renderInline(node.children)}
-        {heading !== undefined && (
-          <a
-            href={`#${heading.id}`}
-            className="rounded text-muted-foreground opacity-0 outline-none transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50"
-          >
-            <HugeiconsIcon icon={HashIcon} strokeWidth={2} className="size-4" />
-            <span className="sr-only">Link to section: {heading.text}</span>
-          </a>
-        )}
+        {heading !== undefined && <HeadingAnchor id={heading.id} text={heading.text} route={route} />}
       </span>
     </Tag>
   );
@@ -155,7 +149,7 @@ function ListBlock({ node }: { node: List }) {
             child.type === "paragraph" ? (
               <span key={childIndex}>{renderInline(child.children)}</span>
             ) : (
-              <BlockNode key={childIndex} node={child} headingQueue={[]} />
+              <BlockNode key={childIndex} node={child} headingQueue={[]} route="" />
             ),
           )}
         </li>
