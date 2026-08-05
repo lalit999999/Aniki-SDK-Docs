@@ -40,6 +40,15 @@ export type { BuildSnippetOptions } from "./highlight";
 
 export { SEARCH_INDEX_URL, isSearchIndex, loadSearchIndex } from "./client";
 
+export {
+  MAX_RECENT_SEARCHES,
+  RECENT_SEARCHES_KEY,
+  addRecentSearch,
+  clearRecentSearches,
+  readRecentSearches,
+  writeRecentSearches,
+} from "./recent-searches";
+
 export { normalize, normalizeChar, splitIdentifier, tokenize, tokenizeQuery } from "./tokenize";
 export type { TokenizedQuery } from "./tokenize";
 
