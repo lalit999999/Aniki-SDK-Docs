@@ -95,14 +95,21 @@ function isMeaningful(token: string, singleCharacterQuery: boolean): boolean {
  * ```
  */
 export function tokenize(text: string): string[] {
-  const normalized = normalize(text);
-  const singleCharacterQuery = normalized.length === 1;
-  const rawTokens = normalized.split(NON_ALPHANUMERIC_PATTERN).filter((t) => t.length > 0);
+  const singleCharacterQuery = normalize(text).length === 1;
+
+  // Split the ORIGINAL text, casing intact - splitIdentifier needs to see
+  // the actual upper/lowercase boundaries of "generateText" to split it at
+  // all. Normalizing (which lowercases) before splitting would destroy
+  // that signal and silently turn every camelCase identifier into one
+  // opaque lowercase blob. Each resulting piece is normalized individually,
+  // right before it's considered for inclusion.
+  const rawTokens = text.split(NON_ALPHANUMERIC_PATTERN).filter((t) => t.length > 0);
 
   const seen = new Set<string>();
   const tokens: string[] = [];
 
-  function push(token: string): void {
+  function push(rawPiece: string): void {
+    const token = normalize(rawPiece);
     if (!isMeaningful(token, singleCharacterQuery)) {
       return;
     }
@@ -116,7 +123,7 @@ export function tokenize(text: string): string[] {
   for (const raw of rawTokens) {
     push(raw);
     for (const part of splitIdentifier(raw)) {
-      push(normalize(part));
+      push(part);
     }
   }
 
