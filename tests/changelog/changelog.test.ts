@@ -158,4 +158,47 @@ describe("changelog loader against a fixture tree", () => {
     expect(previous?.slug).toBe("v1.0.0");
     expect(next).toBeNull();
   });
+
+  it("resolves 'previous' to the older release and 'next' to the newer one (D16)", async () => {
+    await writeRelease(
+      "v1.0.0.md",
+      'version: "1.0.0"\ntitle: "One"\ndate: 2026-01-01\ndocsVersion: "v1"\nstatus: "stable"\nsummary: "One."',
+    );
+    await writeRelease(
+      "v2.0.0.md",
+      'version: "2.0.0"\ntitle: "Two"\ndate: 2026-02-01\ndocsVersion: "v1"\nstatus: "stable"\nsummary: "Two."',
+    );
+    await writeRelease(
+      "v3.0.0.md",
+      'version: "3.0.0"\ntitle: "Three"\ndate: 2026-03-01\ndocsVersion: "v1"\nstatus: "stable"\nsummary: "Three."',
+    );
+
+    const { getAdjacentReleases, clearChangelogCache } = await import("@/lib/changelog/loader");
+    clearChangelogCache();
+
+    // Newest-first order is [v3.0.0, v2.0.0, v1.0.0]. From the middle
+    // release, "previous" must be the older v1.0.0 (later in the
+    // newest-first array) and "next" the newer v3.0.0 (earlier in the
+    // array) - the inverse of raw array order (D16).
+    const middle = await getAdjacentReleases("v2.0.0");
+    expect(middle.previous?.slug).toBe("v1.0.0");
+    expect(middle.next?.slug).toBe("v3.0.0");
+
+    // From the oldest release, there is nothing older.
+    const oldest = await getAdjacentReleases("v1.0.0");
+    expect(oldest.previous).toBeNull();
+    expect(oldest.next?.slug).toBe("v2.0.0");
+  });
+
+  it("rejects an unknown slug with ReleaseNotFoundError", async () => {
+    await writeRelease(
+      "v1.0.0.md",
+      'version: "1.0.0"\ntitle: "One"\ndate: 2026-01-01\ndocsVersion: "v1"\nstatus: "stable"\nsummary: "One."',
+    );
+
+    const { getAdjacentReleases, clearChangelogCache } = await import("@/lib/changelog/loader");
+    const { ReleaseNotFoundError } = await import("@/lib/changelog/errors");
+    clearChangelogCache();
+    await expect(getAdjacentReleases("v9.9.9")).rejects.toBeInstanceOf(ReleaseNotFoundError);
+  });
 });

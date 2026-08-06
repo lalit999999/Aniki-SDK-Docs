@@ -3,15 +3,49 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowLeft01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
 
 import { cn } from "@/lib/utils";
-import type { AdjacentDocs } from "@/lib/content";
 
 /**
- * Previous/next document cards, crossing category boundaries. Renders
- * only the sides that exist so the grid stays balanced at the start and
- * end of the document set (the remaining card spans the full width via
- * `col-span-2` on the lone child).
+ * The minimum shape `PreviousNextNav` needs from an adjacent item: a route
+ * to link to and a title to show. `category` is optional and, when
+ * present, is used as the eyebrow label above the title - the behaviour
+ * `DocMeta` already relied on. Items with no `category` (release notes)
+ * fall back to the `olderLabel`/`newerLabel` props instead.
  */
-export function PreviousNextNav({ adjacent }: { adjacent: AdjacentDocs }) {
+interface PreviousNextItem {
+  route: string;
+  title: string;
+  category?: string;
+}
+
+/**
+ * Previous/next cards, generalized (D16 in the sub-task 9 spec) over any
+ * item with a `route` and `title` - documentation pages (crossing category
+ * boundaries, labelled by `category`) and release notes (labelled by
+ * `olderLabel`/`newerLabel`) alike. Renders only the sides that exist so
+ * the grid stays balanced at the start and end of the sequence (the
+ * remaining card spans the full width via `col-span-2` on the lone
+ * child).
+ *
+ * Chose to generalize this component rather than write a parallel
+ * `ReleaseNav` (D16): the markup, spacing, and hover behaviour would
+ * otherwise be duplicated verbatim for a difference that's really just
+ * "where does the eyebrow label come from." The existing docs call site
+ * (`<PreviousNextNav adjacent={adjacent} />`) needs no changes - `category`
+ * keeps working exactly as before, and the new props are optional.
+ */
+export function PreviousNextNav<T extends PreviousNextItem>({
+  adjacent,
+  olderLabel,
+  newerLabel,
+}: {
+  adjacent: { previous: T | null; next: T | null };
+  /** Eyebrow label for the previous card when the item has no `category`
+   * of its own. */
+  olderLabel?: string;
+  /** Eyebrow label for the next card when the item has no `category` of
+   * its own. */
+  newerLabel?: string;
+}) {
   const { previous, next } = adjacent;
   if (previous === null && next === null) {
     return null;
@@ -31,7 +65,7 @@ export function PreviousNextNav({ adjacent }: { adjacent: AdjacentDocs }) {
         >
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
             <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} className="size-3.5" />
-            {previous.category}
+            {previous.category ?? olderLabel}
           </span>
           <span className="font-medium text-foreground group-hover:underline">{previous.title}</span>
         </Link>
@@ -45,7 +79,7 @@ export function PreviousNextNav({ adjacent }: { adjacent: AdjacentDocs }) {
           )}
         >
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            {next.category}
+            {next.category ?? newerLabel}
             <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} className="size-3.5" />
           </span>
           <span className="font-medium text-foreground group-hover:underline">{next.title}</span>
