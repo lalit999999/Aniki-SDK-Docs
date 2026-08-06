@@ -7,18 +7,29 @@
  * three garbage table-of-contents entries there. In the AST, fenced code
  * becomes a `code` leaf node with no children, so a heading walk that
  * only descends into `children` arrays never sees them.
+ *
+ * `remarkDirective` is a parse-level micromark extension: it teaches the
+ * processor `:::name`, `::name`, and `:name` syntax, turning them into
+ * `containerDirective` / `leafDirective` / `textDirective` mdast nodes
+ * (see `lib/doc-components/types.ts` for the type augmentation this
+ * requires). It changes nothing about how existing markdown parses -
+ * every one of `parseMarkdown`'s five consumers (this module's own
+ * heading extraction, `reading-time.ts`, `lib/search/indexer.ts`,
+ * `lib/changelog/loader.ts`, and the `MarkdownNodes` renderer) now also
+ * sees directive nodes wherever content authors use directive syntax.
  */
 
 import { toString as mdastToString } from "mdast-util-to-string";
 import type { Heading, Root, RootContent } from "mdast";
 import { unified } from "unified";
 import remarkParse from "remark-parse";
+import remarkDirective from "remark-directive";
 
 import { MarkdownParseError } from "./errors";
 import { createHeadingSlugger } from "./slug";
 import type { DocHeading } from "./types";
 
-const processor = unified().use(remarkParse);
+const processor = unified().use(remarkParse).use(remarkDirective);
 
 /**
  * Parses markdown source into an mdast `Root`.
