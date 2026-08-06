@@ -20,6 +20,11 @@ function doc(slug: string, category: DocCategory, order: number): DocMeta {
     readingTime: { minutes: 1, words: 1, text: "1 min read" },
     version: "v1",
     isLatestVersion: true,
+    deprecated: false,
+    deprecatedSince: null,
+    deprecatedReason: null,
+    replacedBy: null,
+    since: null,
   };
 }
 

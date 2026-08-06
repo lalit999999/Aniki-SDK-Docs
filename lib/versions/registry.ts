@@ -9,7 +9,11 @@
  * itself. Either way, a broken registry never reaches a deploy.
  */
 
-import { DOCS_VERSIONS } from "@/config/versions";
+// A relative import, not the `@/*` path alias: `next.config.ts` imports
+// this module (T5) through its own isolated transpilation pass, which
+// does not apply the tsconfig `paths` mapping the rest of the app relies
+// on - only a relative import resolves there.
+import { DOCS_VERSIONS } from "../../config/versions";
 
 import { UnknownVersionError, VersionConfigError } from "./errors";
 import type { DocsVersion } from "./types";

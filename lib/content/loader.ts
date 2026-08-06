@@ -16,11 +16,12 @@ import path from "node:path";
 
 import matter from "gray-matter";
 
+import { VersionConfigError } from "@/lib/versions/errors";
 import { getLatestVersion, getVersions, resolveVersionId } from "@/lib/versions/registry";
 import type { DocsVersionSummary } from "@/lib/versions/types";
 
 import { assertVersionDirectories, listDocFiles, readDocFile } from "./paths";
-import { ContentNotFoundError, DuplicateSlugError } from "./errors";
+import { ContentNotFoundError, DuplicateSlugError, FrontmatterValidationError } from "./errors";
 import { resolveLastModified } from "./git";
 import { extractHeadings, extractLeadingH1, parseMarkdown, stripLeadingH1 } from "./headings";
 import { calculateReadingTime } from "./reading-time";
@@ -49,6 +50,11 @@ async function buildDoc(filePath: string, versionId: string): Promise<Doc> {
   const order = frontmatter.order ?? 0;
   const draft = frontmatter.draft ?? false;
   const tags = frontmatter.tags ?? [];
+  const deprecated = frontmatter.deprecated ?? false;
+  const deprecatedSince = frontmatter.deprecatedSince ?? null;
+  const deprecatedReason = frontmatter.deprecatedReason ?? null;
+  const replacedBy = frontmatter.replacedBy ?? null;
+  const since = frontmatter.since ?? null;
 
   const headings = extractHeadings(tree, { maxLevel: 4 });
   const toc = buildToc(headings);
@@ -74,6 +80,11 @@ async function buildDoc(filePath: string, versionId: string): Promise<Doc> {
     readingTime,
     version: versionId,
     isLatestVersion: versionId === getLatestVersion().id,
+    deprecated,
+    deprecatedSince,
+    deprecatedReason,
+    replacedBy,
+    since,
   };
 
   return {
@@ -122,6 +133,17 @@ async function buildIndex(versionId?: string): Promise<Doc[]> {
         filePaths,
       });
     }
+  }
+
+  const slugSet = new Set(docs.map((doc) => doc.meta.slug));
+  const danglingReplacedBy = docs
+    .filter((doc) => doc.meta.replacedBy !== null && !slugSet.has(doc.meta.replacedBy))
+    .map((doc) => `"${doc.meta.filePath}" declares replacedBy: "${doc.meta.replacedBy}", which has no matching page in version "${resolvedVersionId}"`);
+  if (danglingReplacedBy.length > 0) {
+    throw new FrontmatterValidationError(
+      `dangling replacedBy pointer(s) in version "${resolvedVersionId}":\n${danglingReplacedBy.join("\n")}`,
+      { filePath: resolvedVersionId, issues: danglingReplacedBy },
+    );
   }
 
   docs.sort((a, b) => compareDocMeta(a.meta, b.meta));
@@ -318,8 +340,9 @@ export async function getAdjacentDocs(slug: string, versionId?: string): Promise
  * count and index route, after validating that the registry and the
  * on-disk content directories agree (D3).
  *
- * @throws {VersionConfigError} if a declared version has no directory, or
- * a directory has no declared version.
+ * @throws {VersionConfigError} if a declared version has no directory, a
+ * directory has no declared version, or a version's `migrationGuideSlug`
+ * doesn't resolve to a real page in that version.
  *
  * @example
  * ```ts
@@ -340,6 +363,22 @@ export async function getDocVersions(): Promise<DocsVersionSummary[]> {
         indexRoute: slugToRoute("index", version.id),
       };
     }),
+  );
+
+  // Re-fetches each version's docs (cheap: warm from the summary pass
+  // above via buildIndex's cache) purely to check migrationGuideSlug,
+  // since that value lives on the registry entry, not on any one doc.
+  await Promise.all(
+    summaries
+      .filter((version) => version.migrationGuideSlug !== undefined)
+      .map(async (version) => {
+        const docs = await getAllDocs(version.id);
+        const hasGuide = docs.some((doc) => doc.meta.slug === version.migrationGuideSlug);
+        if (!hasGuide) {
+          const violation = `version "${version.id}" declares migrationGuideSlug "${version.migrationGuideSlug}", which has no matching page`;
+          throw new VersionConfigError(violation, { violations: [violation] });
+        }
+      }),
   );
 
   return summaries;

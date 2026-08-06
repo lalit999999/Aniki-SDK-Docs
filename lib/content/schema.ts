@@ -14,41 +14,99 @@ const categoryEnum = z.enum(DOC_CATEGORIES as [DocCategory, ...DocCategory[]]);
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
- * gray-matter's YAML parser (js-yaml under the hood) treats an unquoted
- * `YYYY-MM-DD` scalar as a native date, not a string - `updated:
- * 2026-08-03` in a frontmatter block yields a JS `Date` at parse time.
- * This preprocess step normalizes that back to a plain date string before
- * the pattern/calendar checks below run, so authors don't have to
- * remember to quote the value.
+ * Builds a Zod schema for an optional `YYYY-MM-DD` date field, guarding
+ * against js-yaml's (gray-matter's YAML parser) quirk of treating an
+ * unquoted `YYYY-MM-DD` scalar as a native `Date` rather than a string -
+ * `updated: 2026-08-03` in a frontmatter block yields a JS `Date` at parse
+ * time (T9). The `z.preprocess` step here normalizes that back to a plain
+ * date string before the pattern/calendar checks run, so authors don't
+ * have to remember to quote the value. Every date field in this schema
+ * (`updated`, `deprecatedSince`, and any added later) must be built with
+ * this helper rather than a bare `z.string().regex(...)`, or it will
+ * silently reject every unquoted date an author writes.
+ *
+ * @example
+ * ```ts
+ * const updatedField = isoDateField();
+ * updatedField.parse("2026-08-03");        // "2026-08-03"
+ * updatedField.parse(new Date("2026-08-03")); // "2026-08-03"
+ * ```
  */
-const updatedField = z.preprocess(
-  (value) => (value instanceof Date ? value.toISOString().slice(0, 10) : value),
-  z
-    .string()
-    .regex(ISO_DATE_PATTERN, "must match YYYY-MM-DD")
-    .refine((value) => !Number.isNaN(Date.parse(value)), "must be a valid calendar date")
-    .optional(),
-);
+function isoDateField() {
+  return z.preprocess(
+    (value) => (value instanceof Date ? value.toISOString().slice(0, 10) : value),
+    z
+      .string()
+      .regex(ISO_DATE_PATTERN, "must match YYYY-MM-DD")
+      .refine((value) => !Number.isNaN(Date.parse(value)), "must be a valid calendar date")
+      .optional(),
+  );
+}
+
+const updatedField = isoDateField();
+const deprecatedSinceField = isoDateField();
 
 const slugField = z.string().min(1).optional();
 const draftField = z.boolean().default(false);
 const tagsField = z.array(z.string()).default([]);
+const deprecatedField = z.boolean().default(false);
+const deprecatedReasonField = z.string().min(1).optional();
+const replacedByField = z.string().min(1).optional();
+const sinceField = z.string().min(1).optional();
+
+/**
+ * Rejects `deprecatedSince`/`deprecatedReason`/`replacedBy` when
+ * `deprecated` isn't `true` (D9): those fields only make sense on a page
+ * that is actually marked deprecated, and authoring them without the flag
+ * is almost certainly a mistake (the flag was forgotten) rather than
+ * intentional. Names every offending field in one pass so a single fix
+ * cycle catches them all.
+ */
+function checkDeprecationFields(
+  data: { deprecated?: boolean; deprecatedSince?: string; deprecatedReason?: string; replacedBy?: string },
+  ctx: z.RefinementCtx,
+): void {
+  if (data.deprecated) {
+    return;
+  }
+  const offending: [string, unknown][] = [
+    ["deprecatedSince", data.deprecatedSince],
+    ["deprecatedReason", data.deprecatedReason],
+    ["replacedBy", data.replacedBy],
+  ];
+  for (const [field, value] of offending) {
+    if (value !== undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: [field],
+        message: `"${field}" is set but "deprecated" is not true`,
+      });
+    }
+  }
+}
 
 /**
  * Schema for a fully-authored frontmatter block: `title`, `description`,
  * `category`, and `order` are all required, matching every page in
  * `content/docs` as of sub-task 3.
  */
-export const docFrontmatterSchema: z.ZodType<DocFrontmatter> = z.object({
-  title: z.string().min(1),
-  description: z.string().min(1),
-  category: categoryEnum,
-  order: z.number().int().nonnegative(),
-  updated: updatedField,
-  slug: slugField,
-  draft: draftField,
-  tags: tagsField,
-});
+export const docFrontmatterSchema: z.ZodType<DocFrontmatter> = z
+  .object({
+    title: z.string().min(1),
+    description: z.string().min(1),
+    category: categoryEnum,
+    order: z.number().int().nonnegative(),
+    updated: updatedField,
+    slug: slugField,
+    draft: draftField,
+    tags: tagsField,
+    deprecated: deprecatedField,
+    deprecatedSince: deprecatedSinceField,
+    deprecatedReason: deprecatedReasonField,
+    replacedBy: replacedByField,
+    since: sinceField,
+  })
+  .superRefine(checkDeprecationFields);
 
 /**
  * Lenient variant used when a `.md` file has no frontmatter block at all
@@ -61,16 +119,23 @@ export const docFrontmatterSchema: z.ZodType<DocFrontmatter> = z.object({
  * the caller. Any field that *is* present is still validated - absence is
  * tolerated, a wrong type or value is not.
  */
-export const partialDocFrontmatterSchema: z.ZodType<Partial<DocFrontmatter>> = z.object({
-  title: z.string().min(1).optional(),
-  description: z.string().min(1).optional(),
-  category: categoryEnum.optional(),
-  order: z.number().int().nonnegative().default(0),
-  updated: updatedField,
-  slug: slugField,
-  draft: draftField,
-  tags: tagsField,
-});
+export const partialDocFrontmatterSchema: z.ZodType<Partial<DocFrontmatter>> = z
+  .object({
+    title: z.string().min(1).optional(),
+    description: z.string().min(1).optional(),
+    category: categoryEnum.optional(),
+    order: z.number().int().nonnegative().default(0),
+    updated: updatedField,
+    slug: slugField,
+    draft: draftField,
+    tags: tagsField,
+    deprecated: deprecatedField,
+    deprecatedSince: deprecatedSinceField,
+    deprecatedReason: deprecatedReasonField,
+    replacedBy: replacedByField,
+    since: sinceField,
+  })
+  .superRefine(checkDeprecationFields);
 
 function formatIssues(error: z.ZodError): string[] {
   return error.issues.map((issue) => {

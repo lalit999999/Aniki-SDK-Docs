@@ -8,6 +8,7 @@ import { ArrowDown01Icon } from "@hugeicons/core-free-icons";
 
 import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { Badge } from "@/components/ui/badge";
 import {
   Collapsible,
   CollapsibleContent,
@@ -108,12 +109,17 @@ export function DocsSidebarNav({
                     aria-current={isActive ? "page" : undefined}
                     onClick={onNavigate}
                     className={cn(
-                      "relative rounded-md px-3 py-1.5 text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/30",
+                      "relative flex items-center justify-between gap-2 rounded-md px-3 py-1.5 text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/30",
                       isActive &&
                         "bg-muted font-medium text-foreground before:absolute before:inset-y-1 before:left-0 before:w-0.5 before:rounded-full before:bg-primary",
                     )}
                   >
-                    {doc.title}
+                    <span>{doc.title}</span>
+                    {doc.deprecated && (
+                      <Badge variant="outline" className="shrink-0 text-[10px]">
+                        Deprecated
+                      </Badge>
+                    )}
                   </Link>
                 );
               })}

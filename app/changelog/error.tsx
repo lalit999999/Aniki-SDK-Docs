@@ -5,11 +5,11 @@ import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 
 /**
- * Error boundary for everything under `/docs`. Logs the digest for
+ * Error boundary for everything under `/changelog`. Logs the digest for
  * correlation with server logs but never surfaces the raw error/stack to
- * the user.
+ * the user - mirrors `app/docs/error.tsx`.
  */
-export default function DocsError({
+export default function ChangelogError({
   error,
   reset,
 }: {
@@ -21,10 +21,10 @@ export default function DocsError({
   }, [error]);
 
   return (
-    <div className="col-span-full min-w-0 py-16 text-center">
+    <div className="flex flex-1 flex-col items-center justify-center px-4 py-24 text-center">
       <h1 className="font-heading text-2xl font-bold text-foreground">Something went wrong</h1>
       <p className="mt-2 text-muted-foreground">
-        This documentation page failed to load. You can try again, or head back to the docs home.
+        The changelog failed to load. You can try again, or head back to the docs home.
       </p>
       <Button onClick={reset} className="mt-6">
         Try again
