@@ -1,5 +1,5 @@
 /**
- * Integration test against the real 16 files in content/docs - the actual
+ * Integration test against the real 17 files in content/docs - the actual
  * proof that the content loader works, not just that its pieces do in
  * isolation. Every expectation here is measured from the current content
  * set (see the sub-task 10 spec); if one fails, treat the loader as wrong
@@ -21,9 +21,9 @@ beforeEach(() => {
 });
 
 describe("content integrity", () => {
-  it("loads exactly 16 documents", async () => {
+  it("loads exactly 17 documents", async () => {
     const docs = await getAllDocs();
-    expect(docs).toHaveLength(16);
+    expect(docs).toHaveLength(17);
   });
 
   it("gives every document a non-empty title and description", async () => {

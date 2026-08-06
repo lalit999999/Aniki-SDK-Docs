@@ -9,7 +9,13 @@ import type { ReleaseMeta } from "@/lib/changelog";
 
 const RELEASE_DATE_FORMAT = "d MMM yyyy";
 
-const STATUS_BADGE_VARIANT: Record<ReleaseMeta["status"], "secondary" | "outline" | "destructive"> = {
+/**
+ * Maps a release's publication status to the `Badge` variant that
+ * represents it, shared with `app/changelog/[version]/page.tsx` so the
+ * index and the full release notes page never disagree about what a
+ * status looks like.
+ */
+export const STATUS_BADGE_VARIANT: Record<ReleaseMeta["status"], "secondary" | "outline" | "destructive"> = {
   stable: "secondary",
   prerelease: "outline",
   yanked: "destructive",
