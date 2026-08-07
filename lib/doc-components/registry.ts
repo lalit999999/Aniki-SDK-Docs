@@ -31,9 +31,12 @@ import { AccordionItemPanel, DocAccordion } from "@/components/docs-ui/doc-accor
 import { DocBadge } from "@/components/docs-ui/doc-badge";
 import { DocTabs, TabPanel } from "@/components/docs-ui/doc-tabs";
 import { Feature, FeatureGrid } from "@/components/docs-ui/feature-grid";
+import { FileTree } from "@/components/docs-ui/file-tree";
 import { StepPanel, Steps } from "@/components/docs-ui/steps";
 
 import { directiveBoolean, extractDirectiveLabel, toAttributeRecord, formatDirectiveIssues } from "./attributes";
+import { parseFileTree } from "./file-tree";
+import type { FileTreeNode } from "./file-tree";
 import { iconAttribute } from "./icons";
 import { isContainerDirective, isLeafDirective } from "./types";
 import type { DirectiveKind, DirectiveNode } from "./types";
@@ -153,6 +156,25 @@ for (const type of CALLOUT_TYPES) {
     component: Callout,
   });
 }
+
+/**
+ * `:::file-tree` - a folder structure authored as an ordinary nested
+ * markdown list rather than directive syntax. `nodes` isn't an author-
+ * facing attribute (the schema below never produces it); `deriveAttrs`
+ * overwrites the placeholder with `parseFileTree`'s real result, or fails
+ * the directive with `DIRECTIVE_STRUCTURE_INVALID` when the body isn't
+ * exactly one list.
+ */
+DOC_COMPONENTS["file-tree"] = defineDirective({
+  kind: "containerDirective",
+  schema: z.object({}).transform(() => ({ nodes: [] as FileTreeNode[] })),
+  component: FileTree,
+  deriveAttrs: (node, attrs) => {
+    const { children } = extractDirectiveLabel(node);
+    const result = parseFileTree(children);
+    return result.ok ? { ok: true, attrs: { ...attrs, nodes: result.nodes } } : result;
+  },
+});
 
 /**
  * Checks every `:::tab` child of a `:::::tabs` container for a non-empty

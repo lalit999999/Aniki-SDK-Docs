@@ -80,6 +80,25 @@ $ npm run dev
 Ready on http://localhost:3000
 ```
 
+## File tree
+
+`:::file-tree` renders a project folder structure from an ordinary nested
+markdown list - no directive syntax for individual entries, since a list is
+already the natural way to author one. An entry with a trailing `/` (or
+with children of its own) renders as a folder; wrap a name in `**bold**` to
+highlight it.
+
+:::file-tree
+- src/
+  - app/
+    - **page.tsx**
+    - layout.tsx
+  - lib/
+    - utils.ts
+- package.json
+- README.md
+:::
+
 ## Tabs
 
 `::::tabs{sync="..."}` wraps one or more `:::tab{label="..."}` children.
