@@ -1,10 +1,15 @@
 /**
- * Public entry point for the SEO surface: metadata building today,
- * sitemap and robots generation once sub-task 2 adds them to this same
- * barrel.
+ * Public entry point for the SEO surface: metadata building, sitemap
+ * generation, and robots rules.
  *
- * Client-safe by construction - no `server-only` guard, since nothing here
- * touches the filesystem.
+ * Not client-safe as a whole: `./sitemap` carries its own `server-only`
+ * guard (it reads `content/docs` and `content/changelog`), which
+ * propagates through this barrel to anything that imports from here.
+ * `buildPageMetadata`, `buildRobotsRules`, and the JSON-LD builders have no
+ * filesystem dependency of their own and would be safe to import
+ * individually from their own modules if a future client-side use ever
+ * needed just those - but importing this barrel always pulls in the
+ * server-only boundary.
  *
  * @example
  * ```ts
@@ -28,6 +33,9 @@ export {
   buildPageMetadata,
   validateSeoFields,
 } from "./metadata";
+
+export { buildRobotsRules } from "./robots";
+export { buildSitemapEntries } from "./sitemap";
 
 export { InvalidSeoInputError, SeoError, SitemapBuildError } from "./errors";
 export type { SeoErrorCode } from "./errors";
