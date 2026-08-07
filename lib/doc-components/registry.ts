@@ -24,13 +24,17 @@ import type { ComponentType, ReactNode } from "react";
 import { z } from "zod";
 import type { ContainerDirective, TextDirective } from "mdast-util-directive";
 
-import { AccordionItemPanel, DocAccordion } from "@/components/docs-ui/doc-accordion";
 import { Callout, CALLOUT_TYPES } from "@/components/docs-ui/callout";
+import { CardsGrid, DocCard } from "@/components/docs-ui/cards";
 import { CodeGroup } from "@/components/docs-ui/code-group";
+import { AccordionItemPanel, DocAccordion } from "@/components/docs-ui/doc-accordion";
+import { DocBadge } from "@/components/docs-ui/doc-badge";
 import { DocTabs, TabPanel } from "@/components/docs-ui/doc-tabs";
+import { Feature, FeatureGrid } from "@/components/docs-ui/feature-grid";
 import { StepPanel, Steps } from "@/components/docs-ui/steps";
 
 import { directiveBoolean, extractDirectiveLabel, toAttributeRecord, formatDirectiveIssues } from "./attributes";
+import { iconAttribute } from "./icons";
 import { isContainerDirective, isLeafDirective } from "./types";
 import type { DirectiveKind, DirectiveNode } from "./types";
 import {
@@ -286,6 +290,83 @@ DOC_COMPONENTS["accordion-item"] = defineDirective({
   kind: "containerDirective",
   schema: z.object({ title: z.string().optional(), open: directiveBoolean().optional() }),
   component: AccordionItemPanel,
+});
+
+/** Maps a `columns` enum string to its literal numeric value, keeping the
+ * precise `1 | 2 | 3` type `CardsGrid` expects - `.transform(Number)`
+ * would widen it to plain `number` instead. */
+const CARDS_COLUMN_VALUES = { "1": 1, "2": 2, "3": 3 } as const;
+
+/**
+ * `::::cards{columns}` / `:::card{title icon href}`. `card` is fully
+ * self-contained (unlike `tab`/`step`/`accordion-item`, `cards` never
+ * needs to read anything back out of it) - it renders its own title, icon,
+ * and link chrome, so `CardsGrid` is purely a responsive grid wrapper with
+ * no compound-component machinery at all.
+ */
+DOC_COMPONENTS.cards = defineDirective({
+  kind: "containerDirective",
+  schema: z.object({
+    columns: z
+      .enum(["1", "2", "3"])
+      .default("3")
+      .transform((value) => CARDS_COLUMN_VALUES[value]),
+  }),
+  component: CardsGrid,
+  allowedChildren: ["card"],
+});
+
+DOC_COMPONENTS.card = defineDirective({
+  kind: "containerDirective",
+  schema: z.object({
+    title: z.string().optional(),
+    icon: iconAttribute(),
+    href: z.string().optional(),
+  }),
+  component: DocCard,
+});
+
+/** See `CARDS_COLUMN_VALUES` - same reasoning, narrower range. */
+const FEATURES_COLUMN_VALUES = { "2": 2, "3": 3 } as const;
+
+/**
+ * `::::features{columns}` / `:::feature{title icon}` - the marketing-
+ * leaning sibling of `cards`/`card`, same self-contained shape. `columns`
+ * is closed to 2|3 (never 1 - a single-column "grid" of features reads as
+ * a plain list, which the grammar doesn't offer a features-specific reason
+ * to want over just writing prose).
+ */
+DOC_COMPONENTS.features = defineDirective({
+  kind: "containerDirective",
+  schema: z.object({
+    columns: z
+      .enum(["2", "3"])
+      .default("3")
+      .transform((value) => FEATURES_COLUMN_VALUES[value]),
+  }),
+  component: FeatureGrid,
+  allowedChildren: ["feature"],
+});
+
+DOC_COMPONENTS.feature = defineDirective({
+  kind: "containerDirective",
+  schema: z.object({ title: z.string().optional(), icon: iconAttribute() }),
+  component: Feature,
+});
+
+/**
+ * `:badge[Label]{variant}` - the first `textDirective` entry in this
+ * registry. Needs no change to `markdown-nodes.tsx`'s `TextDirectiveNode`,
+ * which already dispatches every text directive through `resolveDirective`
+ * generically (D4); an unregistered text directive is unaffected and still
+ * falls through to `reconstructTextDirectiveSource`; that fallback keys on
+ * the directive's *name* being absent from `DOC_COMPONENTS`, not on
+ * whether any text directive at all has been registered.
+ */
+DOC_COMPONENTS.badge = defineDirective({
+  kind: "textDirective",
+  schema: z.object({ variant: z.enum(["default", "secondary", "outline", "destructive"]).default("default") }),
+  component: DocBadge,
 });
 
 /** A directive that resolved cleanly against `DOC_COMPONENTS`. */

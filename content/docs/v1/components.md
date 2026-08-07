@@ -168,3 +168,45 @@ Every provider adapter implements the same async-iterator interface.
 Yes, there are no required external services.
 :::
 ::::
+
+## Cards
+
+`::::cards{columns}` wraps one or more `:::card{title icon href}`
+children. `columns` is a maximum - the grid always collapses to a single
+column on mobile. A card with an `href` is a link with a hover lift; an
+absolute URL additionally gets an external-link arrow.
+
+::::cards{columns=3}
+:::card{title="Quick Start" icon=rocket href="/docs/quick-start"}
+Get an agent running in five minutes.
+:::
+:::card{title="API Reference" icon=book href="/docs/api-reference"}
+Every exported function, typed and documented.
+:::
+:::card{title="GitHub" icon=code href="https://github.com/aniki-sdk/aniki"}
+Star the repo or open an issue.
+:::
+::::
+
+## Feature grid
+
+`::::features{columns}` wraps one or more `:::feature{title icon}`
+children - denser than cards, no border or link, built to double as
+landing-page content later.
+
+::::features{columns=3}
+:::feature{title="Multi-provider" icon=puzzle}
+Swap OpenAI, Anthropic, or a local model without touching agent code.
+:::
+:::feature{title="Streaming-first" icon=zap}
+Every response is an async iterator, not an afterthought.
+:::
+:::feature{title="Type-safe" icon=shield}
+Strict TypeScript from the SDK surface down to provider adapters.
+:::
+::::
+
+## Badges
+
+`:badge[Label]{variant}` is an inline badge for prose: :badge[New],
+:badge[Beta]{variant=outline}, :badge[Deprecated]{variant=destructive}.
