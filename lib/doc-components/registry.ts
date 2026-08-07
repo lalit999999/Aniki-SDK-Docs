@@ -21,8 +21,10 @@
 
 import { createElement } from "react";
 import type { ComponentType, ReactNode } from "react";
-import type { z } from "zod";
+import { z } from "zod";
 import type { ContainerDirective, TextDirective } from "mdast-util-directive";
+
+import { Callout, CALLOUT_TYPES } from "@/components/docs-ui/callout";
 
 import { extractDirectiveLabel, toAttributeRecord, formatDirectiveIssues } from "./attributes";
 import { isContainerDirective, isLeafDirective } from "./types";
@@ -87,11 +89,39 @@ export function defineDirective<Attrs extends Record<string, unknown>>(config: {
 }
 
 /**
- * Directive name -> component entry. Empty until a component sub-task
- * (T3 onward) assigns entries here directly, e.g. `DOC_COMPONENTS.note =
- * DOC_COMPONENTS.callout = defineDirective({...})` for callout aliases.
+ * Directive name -> component entry. Each component sub-task assigns its
+ * entries here directly, e.g. `DOC_COMPONENTS.note = DOC_COMPONENTS.callout
+ * = defineDirective({...})` for callout aliases (below).
  */
 export const DOC_COMPONENTS: Record<string, DocComponentEntry> = {};
+
+/**
+ * `:::callout{type=...}` plus its six name aliases (`:::note`, `:::tip`,
+ * ...) - one `defineDirective` per alias so each carries its own default
+ * `type`, but all six point at the same `Callout` component. `type`
+ * itself can still be overridden explicitly (`:::note{type=danger}`) since
+ * every alias's schema accepts the full enum, not just its own default.
+ */
+function calloutAttributesSchema(defaultType: (typeof CALLOUT_TYPES)[number]) {
+  return z.object({
+    type: z.enum(CALLOUT_TYPES).default(defaultType),
+    title: z.string().optional(),
+  });
+}
+
+DOC_COMPONENTS.callout = defineDirective({
+  kind: "containerDirective",
+  schema: calloutAttributesSchema("note"),
+  component: Callout,
+});
+
+for (const type of CALLOUT_TYPES) {
+  DOC_COMPONENTS[type] = defineDirective({
+    kind: "containerDirective",
+    schema: calloutAttributesSchema(type),
+    component: Callout,
+  });
+}
 
 /** A directive that resolved cleanly against `DOC_COMPONENTS`. */
 export interface DirectiveResolutionOk {
@@ -208,12 +238,21 @@ export function resolveDirective(node: DirectiveNode): DirectiveResolution {
 
   const label = isContainerDirective(node) ? extractDirectiveLabel(node).label : null;
 
+  // D8: "extract [the label] as the title when no title attribute is
+  // given" - generically, for any component whose schema has a `title`
+  // field, not just callouts, so this only needs writing once. A `title`
+  // attribute always wins when both are present.
+  const attrs =
+    label !== null && attrsResult.data.title === undefined
+      ? { ...attrsResult.data, title: label }
+      : attrsResult.data;
+
   return {
     ok: true,
     name: node.name,
-    attrs: attrsResult.data,
+    attrs,
     label,
-    render: (children: ReactNode) => entry.render(attrsResult.data, children),
+    render: (children: ReactNode) => entry.render(attrs, children),
   };
 }
 
