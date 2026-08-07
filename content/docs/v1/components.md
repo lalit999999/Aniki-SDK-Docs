@@ -244,3 +244,16 @@ Lists every agent in the current workspace.
 :::api-endpoint{method=DELETE path="/v1/agents/:id" auth deprecated}
 Deletes an agent. Superseded by the bulk delete endpoint below.
 :::
+
+## Playground
+
+`:::playground{title status=coming-soon|beta href}` marks a known future
+capability - the in-browser interactive playground from Claude.md's Future
+Features - without pretending it already exists. When the real thing
+ships, only this component's internals change; no content file will need
+to be touched.
+
+:::playground{title="Streaming chat" status=beta href="https://github.com/lalit999999/Aniki-SDK"}
+Try the streaming example in the SDK repository while the in-browser
+playground is still being built.
+:::

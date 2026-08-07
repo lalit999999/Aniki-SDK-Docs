@@ -33,6 +33,7 @@ import { DocBadge } from "@/components/docs-ui/doc-badge";
 import { DocTabs, TabPanel } from "@/components/docs-ui/doc-tabs";
 import { Feature, FeatureGrid } from "@/components/docs-ui/feature-grid";
 import { FileTree } from "@/components/docs-ui/file-tree";
+import { PLAYGROUND_STATUSES, Playground } from "@/components/docs-ui/playground";
 import { StepPanel, Steps } from "@/components/docs-ui/steps";
 
 import { directiveBoolean, extractDirectiveLabel, toAttributeRecord, formatDirectiveIssues } from "./attributes";
@@ -212,6 +213,23 @@ DOC_COMPONENTS["api-endpoint"] = defineDirective({
   kind: "containerDirective",
   schema: apiEndpointAttributesSchema,
   component: ApiEndpoint,
+});
+
+/**
+ * `:::playground{title status href}` - see `Playground`'s own doc comment
+ * for why this is a deliberate placeholder rather than an oversight. No
+ * `deriveAttrs`/`allowedChildren` needed: `title` falls back to the D8
+ * directive label the same generic way every other component's does, and
+ * the body is ordinary explanatory prose with no required shape.
+ */
+DOC_COMPONENTS.playground = defineDirective({
+  kind: "containerDirective",
+  schema: z.object({
+    title: z.string().optional(),
+    status: z.enum(PLAYGROUND_STATUSES).default("coming-soon"),
+    href: z.string().optional(),
+  }),
+  component: Playground,
 });
 
 /**
