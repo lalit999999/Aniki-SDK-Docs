@@ -24,12 +24,13 @@ import type { ComponentType, ReactNode } from "react";
 import { z } from "zod";
 import type { ContainerDirective, TextDirective } from "mdast-util-directive";
 
+import { AccordionItemPanel, DocAccordion } from "@/components/docs-ui/doc-accordion";
 import { Callout, CALLOUT_TYPES } from "@/components/docs-ui/callout";
 import { CodeGroup } from "@/components/docs-ui/code-group";
 import { DocTabs, TabPanel } from "@/components/docs-ui/doc-tabs";
 import { StepPanel, Steps } from "@/components/docs-ui/steps";
 
-import { extractDirectiveLabel, toAttributeRecord, formatDirectiveIssues } from "./attributes";
+import { directiveBoolean, extractDirectiveLabel, toAttributeRecord, formatDirectiveIssues } from "./attributes";
 import { isContainerDirective, isLeafDirective } from "./types";
 import type { DirectiveKind, DirectiveNode } from "./types";
 import {
@@ -235,6 +236,56 @@ DOC_COMPONENTS.step = defineDirective({
   kind: "containerDirective",
   schema: z.object({ title: z.string().optional() }),
   component: StepPanel,
+});
+
+/**
+ * Under `type="single"`, at most one `:::accordion-item` may carry `open`
+ * - Radix's own `Accordion` with `type="single"` accepts only one default
+ * value, so two items claiming to be the default-open one is genuinely
+ * ambiguous, not just redundant. Reports every extra `open` beyond the
+ * first as its own issue (naming both indices) rather than silently
+ * keeping the first and discarding the rest with no explanation.
+ */
+function validateSingleAccordionOpen(node: ContainerDirective): string[] {
+  const isOpen = directiveBoolean();
+  const openIndexes: number[] = [];
+  node.children.forEach((child, index) => {
+    if (isContainerDirective(child) && child.name === "accordion-item") {
+      const raw = toAttributeRecord(child).open;
+      if (raw !== undefined && isOpen.safeParse(raw).data === true) {
+        openIndexes.push(index);
+      }
+    }
+  });
+  if (openIndexes.length <= 1) {
+    return [];
+  }
+  const [first, ...rest] = openIndexes;
+  return rest.map(
+    (index) =>
+      `accordion-item at index ${index} also has "open", but type="single" allows only one default-open item (the first, at index ${first})`,
+  );
+}
+
+DOC_COMPONENTS.accordion = defineDirective({
+  kind: "containerDirective",
+  schema: z.object({ type: z.enum(["single", "multiple"]).default("single") }),
+  component: DocAccordion,
+  allowedChildren: ["accordion-item"],
+  deriveAttrs: (node, attrs) => {
+    if (attrs.type !== "single") {
+      return { ok: true, attrs };
+    }
+    const issues = validateSingleAccordionOpen(node);
+    return issues.length > 0 ? { ok: false, issues } : { ok: true, attrs };
+  },
+});
+
+/** Never dispatched on its own (D3/D4) - see `AccordionItemPanel`. */
+DOC_COMPONENTS["accordion-item"] = defineDirective({
+  kind: "containerDirective",
+  schema: z.object({ title: z.string().optional(), open: directiveBoolean().optional() }),
+  component: AccordionItemPanel,
 });
 
 /** A directive that resolved cleanly against `DOC_COMPONENTS`. */

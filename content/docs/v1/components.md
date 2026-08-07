@@ -146,3 +146,25 @@ Ready on http://localhost:3000
 ```
 :::
 ::::
+
+## Accordions
+
+`::::accordion{type=single|multiple}` wraps one or more
+`:::accordion-item{title open}` children. The second item below starts
+collapsed but still has a heading in its body, to prove a collapsed item's
+content still gets a working table-of-contents anchor - Radix keeps it
+mounted for the collapse animation rather than removing it.
+
+::::accordion{type=single}
+:::accordion-item{title="Is Aniki SDK free?" open}
+Yes - it's MIT licensed and free for commercial use.
+:::
+:::accordion-item{title="What does streaming support look like?"}
+### Streaming responses
+
+Every provider adapter implements the same async-iterator interface.
+:::
+:::accordion-item{title="Can I self-host it?"}
+Yes, there are no required external services.
+:::
+::::
