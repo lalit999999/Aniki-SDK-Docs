@@ -257,3 +257,14 @@ to be touched.
 Try the streaming example in the SDK repository while the in-browser
 playground is still being built.
 :::
+
+## Package install
+
+`::package-install{name dev global exec}` switches between npm, pnpm,
+yarn, and bun, remembering your last choice. `name` defaults to the SDK's
+own package name when omitted, and accepts a space- or comma-separated
+list for more than one package.
+
+::package-install{}
+
+::package-install{name="create-aniki-app" exec}

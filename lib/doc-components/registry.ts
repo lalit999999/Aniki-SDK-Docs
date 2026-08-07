@@ -24,6 +24,8 @@ import type { ComponentType, ReactNode } from "react";
 import { z } from "zod";
 import type { ContainerDirective, TextDirective } from "mdast-util-directive";
 
+import { siteConfig } from "@/config/site";
+
 import { ApiEndpoint, HTTP_METHODS } from "@/components/docs-ui/api-endpoint";
 import { Callout, CALLOUT_TYPES } from "@/components/docs-ui/callout";
 import { CardsGrid, DocCard } from "@/components/docs-ui/cards";
@@ -33,10 +35,11 @@ import { DocBadge } from "@/components/docs-ui/doc-badge";
 import { DocTabs, TabPanel } from "@/components/docs-ui/doc-tabs";
 import { Feature, FeatureGrid } from "@/components/docs-ui/feature-grid";
 import { FileTree } from "@/components/docs-ui/file-tree";
+import { PackageInstall } from "@/components/docs-ui/package-install";
 import { PLAYGROUND_STATUSES, Playground } from "@/components/docs-ui/playground";
 import { StepPanel, Steps } from "@/components/docs-ui/steps";
 
-import { directiveBoolean, extractDirectiveLabel, toAttributeRecord, formatDirectiveIssues } from "./attributes";
+import { directiveBoolean, directiveList, extractDirectiveLabel, toAttributeRecord, formatDirectiveIssues } from "./attributes";
 import { parseFileTree } from "./file-tree";
 import type { FileTreeNode } from "./file-tree";
 import { iconAttribute } from "./icons";
@@ -230,6 +233,40 @@ DOC_COMPONENTS.playground = defineDirective({
     href: z.string().optional(),
   }),
   component: Playground,
+});
+
+/**
+ * `::package-install{name dev global exec}` - a leaf directive (no body),
+ * so there's no D8 label to fall back to and no `deriveAttrs` need. `name`
+ * defaults to `siteConfig.packageName` when omitted, so the common case is
+ * just `::package-install{}`; the `.pipe(directiveList())` step then
+ * splits whatever string results (author-supplied or the default) the
+ * same space/comma-separated way every other list attribute does. A name
+ * that splits to nothing - `name=""` or `name=" "` - fails explicitly
+ * rather than silently reaching `buildInstallCommand` with an empty list.
+ */
+const packageInstallAttributesSchema = z.object({
+  name: z
+    .string()
+    .optional()
+    .transform((value) => value ?? siteConfig.packageName)
+    .pipe(directiveList())
+    .transform((packages, ctx) => {
+      if (packages.length === 0) {
+        ctx.addIssue({ code: "custom", message: "name must include at least one package name" });
+        return z.NEVER;
+      }
+      return packages;
+    }),
+  dev: directiveBoolean().optional(),
+  global: directiveBoolean().optional(),
+  exec: directiveBoolean().optional(),
+});
+
+DOC_COMPONENTS["package-install"] = defineDirective({
+  kind: "leafDirective",
+  schema: packageInstallAttributesSchema,
+  component: PackageInstall,
 });
 
 /**
