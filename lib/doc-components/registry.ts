@@ -27,6 +27,7 @@ import type { ContainerDirective, TextDirective } from "mdast-util-directive";
 import { Callout, CALLOUT_TYPES } from "@/components/docs-ui/callout";
 import { CodeGroup } from "@/components/docs-ui/code-group";
 import { DocTabs, TabPanel } from "@/components/docs-ui/doc-tabs";
+import { StepPanel, Steps } from "@/components/docs-ui/steps";
 
 import { extractDirectiveLabel, toAttributeRecord, formatDirectiveIssues } from "./attributes";
 import { isContainerDirective, isLeafDirective } from "./types";
@@ -211,6 +212,29 @@ DOC_COMPONENTS["code-group"] = defineDirective({
     });
     return issues.length > 0 ? { ok: false, issues } : { ok: true, attrs };
   },
+});
+
+/**
+ * `::::steps` / `:::step{title="..."}`, the same registry pattern as
+ * `tabs`/`tab` (T6): `step` is only ever encountered as a child while
+ * `steps` recurses into its body, never dispatched on its own. No
+ * `deriveAttrs` needed here - unlike a tab's `label`, a step's `title` is
+ * optional (falls back to nothing rather than needing to be caught as a
+ * structure issue), and D8's generic label-into-`title` merge in
+ * `resolveDirective` already covers "attribute, falling back to the
+ * directive label" with no extra code.
+ */
+DOC_COMPONENTS.steps = defineDirective({
+  kind: "containerDirective",
+  schema: z.object({}),
+  component: Steps,
+  allowedChildren: ["step"],
+});
+
+DOC_COMPONENTS.step = defineDirective({
+  kind: "containerDirective",
+  schema: z.object({ title: z.string().optional() }),
+  component: StepPanel,
 });
 
 /** A directive that resolved cleanly against `DOC_COMPONENTS`. */

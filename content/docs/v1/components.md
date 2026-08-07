@@ -120,3 +120,29 @@ pnpm add @aniki/sdk
 yarn add @aniki/sdk
 ```
 ::::
+
+## Steps
+
+`::::steps` wraps one or more `:::step{title="..."}` children, numbered by
+position rather than an author-supplied index. A step's body is arbitrary
+markdown - including a heading, to prove it still gets a working
+table-of-contents anchor.
+
+::::steps
+:::step{title="Install"}
+```bash
+npm install @aniki/sdk
+```
+:::
+:::step{title="Configure"}
+### Add your API key
+
+Create a `.env` file with `ANIKI_API_KEY=...`.
+:::
+:::step[Run]
+```terminal
+$ npm run dev
+Ready on http://localhost:3000
+```
+:::
+::::
