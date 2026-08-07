@@ -79,3 +79,44 @@ $ npm run dev
 > aniki-sdk-docs@0.1.0 dev
 Ready on http://localhost:3000
 ```
+
+## Tabs
+
+`::::tabs{sync="..."}` wraps one or more `:::tab{label="..."}` children.
+Two tab groups sharing the same `sync` key move together, and the choice
+survives a reload.
+
+::::tabs{sync="pkg-example"}
+:::tab{label="npm"}
+```bash
+npm install @aniki/sdk
+```
+:::
+:::tab{label="pnpm"}
+```bash
+pnpm add @aniki/sdk
+```
+:::
+:::tab{label="yarn"}
+```bash
+yarn add @aniki/sdk
+```
+:::
+::::
+
+## Code groups
+
+`::::code-group` wraps several fenced code blocks - each panel's tab label
+comes from its fence's `title`, falling back to its language.
+
+::::code-group
+```bash title="npm"
+npm install @aniki/sdk
+```
+```bash title="pnpm"
+pnpm add @aniki/sdk
+```
+```bash title="yarn"
+yarn add @aniki/sdk
+```
+::::

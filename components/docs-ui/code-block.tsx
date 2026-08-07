@@ -5,6 +5,21 @@ import { cn } from "@/lib/utils";
 
 import { CopyButton } from "./copy-button";
 
+/** `CodeBlock`'s own props, exported so `CodeGroup` (T6) can type the
+ * `CodeBlock` elements it receives as children - each fenced code block in
+ * a `::::code-group` renders through the ordinary `code` mdast case first,
+ * and the group only needs to read `lang`/`title` back off those elements
+ * and re-clone them with `showHeader: false`. */
+export interface CodeBlockProps {
+  code: string;
+  lang?: string | null;
+  title?: string | null;
+  showLineNumbers?: boolean;
+  highlightedLines?: readonly number[];
+  showHeader?: boolean;
+  className?: string;
+}
+
 /**
  * The shared fenced-code presentation - window-less, unlike `Terminal`,
  * since a fence is source code rather than a recorded session. A Server
@@ -36,17 +51,7 @@ export function CodeBlock({
   highlightedLines = [],
   showHeader = true,
   className,
-}: {
-  code: string;
-  lang?: string | null;
-  title?: string | null;
-  showLineNumbers?: boolean;
-  highlightedLines?: readonly number[];
-  /** Whether to render the title/language bar. Defaults to `true`; a code
-   * group panel passes `false` since its tab already carries the label. */
-  showHeader?: boolean;
-  className?: string;
-}) {
+}: CodeBlockProps) {
   const lines = code.split("\n");
   const highlighted = new Set(highlightedLines);
   const label = title ?? lang;

@@ -25,6 +25,8 @@ import { z } from "zod";
 import type { ContainerDirective, TextDirective } from "mdast-util-directive";
 
 import { Callout, CALLOUT_TYPES } from "@/components/docs-ui/callout";
+import { CodeGroup } from "@/components/docs-ui/code-group";
+import { DocTabs, TabPanel } from "@/components/docs-ui/doc-tabs";
 
 import { extractDirectiveLabel, toAttributeRecord, formatDirectiveIssues } from "./attributes";
 import { isContainerDirective, isLeafDirective } from "./types";
@@ -53,6 +55,24 @@ export interface DocComponentEntry {
    * container mistake is the most common way this fails. Left `undefined`
    * for components with no structural constraint on their children. */
   readonly allowedChildren?: readonly string[];
+  /**
+   * Extra structural validation, or an attrs transform, beyond what a Zod
+   * schema and `allowedChildren` can express from attributes alone - e.g.
+   * a `:::tabs` container requiring every `:::tab` child to carry a
+   * non-empty `label` (a per-child check, not an attribute of `tabs`
+   * itself), or a `::::code-group` requiring every child to be a fenced
+   * code block rather than a directive at all (so `allowedChildren`, which
+   * only understands directive children, doesn't apply to it). Runs after
+   * attribute validation and `allowedChildren`, given the raw container
+   * node and the attrs computed so far; a problem it finds is reported the
+   * same way an `allowedChildren` mismatch is, via
+   * `DirectiveStructureError`, with every issue named rather than just the
+   * first.
+   */
+  readonly deriveAttrs?: (
+    node: ContainerDirective,
+    attrs: Record<string, unknown>,
+  ) => { ok: true; attrs: Record<string, unknown> } | { ok: false; issues: string[] };
 }
 
 /**
@@ -78,12 +98,17 @@ export function defineDirective<Attrs extends Record<string, unknown>>(config: {
   schema: z.ZodType<Attrs>;
   component: ComponentType<Attrs & { children?: ReactNode }>;
   allowedChildren?: readonly string[];
+  deriveAttrs?: (
+    node: ContainerDirective,
+    attrs: Attrs,
+  ) => { ok: true; attrs: Attrs } | { ok: false; issues: string[] };
 }): DocComponentEntry {
   const { component, schema } = config;
   return {
     kind: config.kind,
     schema: schema as unknown as z.ZodType<Record<string, unknown>>,
     allowedChildren: config.allowedChildren,
+    deriveAttrs: config.deriveAttrs as DocComponentEntry["deriveAttrs"],
     render: (attrs, children) => createElement(component, attrs as Attrs, children),
   };
 }
@@ -122,6 +147,71 @@ for (const type of CALLOUT_TYPES) {
     component: Callout,
   });
 }
+
+/**
+ * Checks every `:::tab` child of a `:::::tabs` container for a non-empty
+ * `label` attribute, naming every offending index rather than stopping at
+ * the first - a missing label is a structure issue on the *parent*, not an
+ * attribute error on the individual `tab` (which is why this lives in
+ * `tabs`'s `deriveAttrs` rather than in `tab`'s own schema): the whole
+ * point is one aggregated, useful error instead of one opaque fallback per
+ * broken tab.
+ */
+function validateTabLabels(node: ContainerDirective): string[] {
+  const issues: string[] = [];
+  node.children.forEach((child, index) => {
+    if (isContainerDirective(child) && child.name === "tab") {
+      const label = toAttributeRecord(child).label;
+      if (label === undefined || label.trim().length === 0) {
+        issues.push(`tab at index ${index} is missing a required "label" attribute`);
+      }
+    }
+  });
+  return issues;
+}
+
+DOC_COMPONENTS.tabs = defineDirective({
+  kind: "containerDirective",
+  schema: z.object({ sync: z.string().optional() }),
+  component: DocTabs,
+  allowedChildren: ["tab"],
+  deriveAttrs: (node, attrs) => {
+    const issues = validateTabLabels(node);
+    return issues.length > 0 ? { ok: false, issues } : { ok: true, attrs };
+  },
+});
+
+/** Never dispatched on its own (D3/D4) - only ever encountered as a
+ * `:::tab` child while `tabs` recurses into its body via `MarkdownNodes`,
+ * by which point `tabs`'s own `deriveAttrs` has already guaranteed every
+ * such child carries a non-empty `label`. */
+DOC_COMPONENTS.tab = defineDirective({
+  kind: "containerDirective",
+  schema: z.object({ label: z.string() }),
+  component: TabPanel,
+});
+
+/**
+ * `::::code-group` requires every child to be a fenced code block, not a
+ * directive - `allowedChildren` only understands directive-named children,
+ * so this check lives in `deriveAttrs` instead, naming the offending index
+ * and node type for anything else (most often the D7 mismatched-colon
+ * mistake leaving stray paragraphs behind).
+ */
+DOC_COMPONENTS["code-group"] = defineDirective({
+  kind: "containerDirective",
+  schema: z.object({}),
+  component: CodeGroup,
+  deriveAttrs: (node, attrs) => {
+    const issues: string[] = [];
+    node.children.forEach((child, index) => {
+      if (child.type !== "code") {
+        issues.push(`expected only fenced code blocks, found a "${child.type}" node at index ${index}`);
+      }
+    });
+    return issues.length > 0 ? { ok: false, issues } : { ok: true, attrs };
+  },
+});
 
 /** A directive that resolved cleanly against `DOC_COMPONENTS`. */
 export interface DirectiveResolutionOk {
@@ -242,10 +332,24 @@ export function resolveDirective(node: DirectiveNode): DirectiveResolution {
   // given" - generically, for any component whose schema has a `title`
   // field, not just callouts, so this only needs writing once. A `title`
   // attribute always wins when both are present.
-  const attrs =
+  let attrs =
     label !== null && attrsResult.data.title === undefined
       ? { ...attrsResult.data, title: label }
       : attrsResult.data;
+
+  if (entry.deriveAttrs !== undefined && isContainerDirective(node)) {
+    const derived = entry.deriveAttrs(node, attrs);
+    if (!derived.ok) {
+      return {
+        ok: false,
+        error: new DirectiveStructureError(`invalid structure for ":::${node.name}"`, {
+          name: node.name,
+          issues: derived.issues,
+        }),
+      };
+    }
+    attrs = derived.attrs;
+  }
 
   return {
     ok: true,
