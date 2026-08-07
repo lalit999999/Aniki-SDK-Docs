@@ -24,6 +24,7 @@ import type { ComponentType, ReactNode } from "react";
 import { z } from "zod";
 import type { ContainerDirective, TextDirective } from "mdast-util-directive";
 
+import { ApiEndpoint, HTTP_METHODS } from "@/components/docs-ui/api-endpoint";
 import { Callout, CALLOUT_TYPES } from "@/components/docs-ui/callout";
 import { CardsGrid, DocCard } from "@/components/docs-ui/cards";
 import { CodeGroup } from "@/components/docs-ui/code-group";
@@ -174,6 +175,43 @@ DOC_COMPONENTS["file-tree"] = defineDirective({
     const result = parseFileTree(children);
     return result.ok ? { ok: true, attrs: { ...attrs, nodes: result.nodes } } : result;
   },
+});
+
+/**
+ * `:::api-endpoint{method path auth deprecated}`. `method` and `path` are
+ * independent top-level Zod fields rather than one `superRefine` over the
+ * whole object, so `safeParse` aggregates issues from both when both are
+ * wrong - a `DirectiveAttributeError` names every bad attribute in one
+ * pass, not just the first one it happens to check (the same aggregation
+ * every other schema in this file already gets for free from `z.object`).
+ */
+const apiEndpointAttributesSchema = z.object({
+  method: z.string().transform((value, ctx) => {
+    const upper = value.toUpperCase();
+    if (!(HTTP_METHODS as readonly string[]).includes(upper)) {
+      ctx.addIssue({
+        code: "custom",
+        message: `must be one of ${HTTP_METHODS.join(", ")}, received "${value}"`,
+      });
+      return z.NEVER;
+    }
+    return upper as (typeof HTTP_METHODS)[number];
+  }),
+  path: z.string().transform((value, ctx) => {
+    if (!value.startsWith("/")) {
+      ctx.addIssue({ code: "custom", message: `must start with "/", received "${value}"` });
+      return z.NEVER;
+    }
+    return value;
+  }),
+  auth: directiveBoolean().optional(),
+  deprecated: directiveBoolean().optional(),
+});
+
+DOC_COMPONENTS["api-endpoint"] = defineDirective({
+  kind: "containerDirective",
+  schema: apiEndpointAttributesSchema,
+  component: ApiEndpoint,
 });
 
 /**

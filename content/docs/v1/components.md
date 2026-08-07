@@ -229,3 +229,18 @@ Strict TypeScript from the SDK surface down to provider adapters.
 
 `:badge[Label]{variant}` is an inline badge for prose: :badge[New],
 :badge[Beta]{variant=outline}, :badge[Deprecated]{variant=destructive}.
+
+## API endpoint cards
+
+`:::api-endpoint{method path auth deprecated}` - `method` is uppercased
+before validation, so `method=get` and `method=GET` both work. `path` must
+start with `/`. The method always renders as text next to its colour, never
+as colour alone.
+
+:::api-endpoint{method=GET path="/v1/agents" auth}
+Lists every agent in the current workspace.
+:::
+
+:::api-endpoint{method=DELETE path="/v1/agents/:id" auth deprecated}
+Deletes an agent. Superseded by the bulk delete endpoint below.
+:::
