@@ -14,8 +14,11 @@ import type { TextDirective } from "mdast-util-directive";
 
 import { HeadingAnchor } from "@/components/docs/heading-anchor";
 import type { DocHeading } from "@/lib/content";
+import { parseCodeMeta } from "@/lib/doc-components/code-meta";
 import { issuesFromDirectiveError, reconstructTextDirectiveSource, resolveDirective } from "@/lib/doc-components/registry";
 
+import { CodeBlock } from "./code-block";
+import { Terminal } from "./terminal";
 import { UnknownDirective } from "./unknown-directive";
 
 /**
@@ -82,12 +85,21 @@ function BlockNode({
       return <p className="text-muted-foreground">{renderInline(node.children)}</p>;
     case "list":
       return <ListBlock node={node} headingQueue={headingQueue} route={route} />;
-    case "code":
+    case "code": {
+      if (node.lang === "terminal") {
+        return <Terminal code={node.value} />;
+      }
+      const meta = parseCodeMeta(node.meta);
       return (
-        <pre className="overflow-x-auto rounded-lg border border-border bg-muted p-4 text-sm">
-          <code className="font-mono">{node.value}</code>
-        </pre>
+        <CodeBlock
+          code={node.value}
+          lang={node.lang}
+          title={meta.title}
+          showLineNumbers={meta.showLineNumbers}
+          highlightedLines={meta.highlightedLines}
+        />
       );
+    }
     case "blockquote":
       return (
         <blockquote className="rounded-md border-l-4 border-primary bg-muted/50 py-2 pl-4 text-muted-foreground">

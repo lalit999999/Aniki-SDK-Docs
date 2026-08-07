@@ -21,10 +21,28 @@
 
 import { createElement } from "react";
 import type { ComponentType, ReactNode } from "react";
-import type { z } from "zod";
+import { z } from "zod";
 import type { ContainerDirective, TextDirective } from "mdast-util-directive";
 
-import { extractDirectiveLabel, toAttributeRecord, formatDirectiveIssues } from "./attributes";
+import { siteConfig } from "@/config/site";
+
+import { ApiEndpoint, HTTP_METHODS } from "@/components/docs-ui/api-endpoint";
+import { Callout, CALLOUT_TYPES } from "@/components/docs-ui/callout";
+import { CardsGrid, DocCard } from "@/components/docs-ui/cards";
+import { CodeGroup } from "@/components/docs-ui/code-group";
+import { AccordionItemPanel, DocAccordion } from "@/components/docs-ui/doc-accordion";
+import { DocBadge } from "@/components/docs-ui/doc-badge";
+import { DocTabs, TabPanel } from "@/components/docs-ui/doc-tabs";
+import { Feature, FeatureGrid } from "@/components/docs-ui/feature-grid";
+import { FileTree } from "@/components/docs-ui/file-tree";
+import { PackageInstall } from "@/components/docs-ui/package-install";
+import { PLAYGROUND_STATUSES, Playground } from "@/components/docs-ui/playground";
+import { StepPanel, Steps } from "@/components/docs-ui/steps";
+
+import { directiveBoolean, directiveList, extractDirectiveLabel, toAttributeRecord, formatDirectiveIssues } from "./attributes";
+import { parseFileTree } from "./file-tree";
+import type { FileTreeNode } from "./file-tree";
+import { iconAttribute } from "./icons";
 import { isContainerDirective, isLeafDirective } from "./types";
 import type { DirectiveKind, DirectiveNode } from "./types";
 import {
@@ -51,6 +69,24 @@ export interface DocComponentEntry {
    * container mistake is the most common way this fails. Left `undefined`
    * for components with no structural constraint on their children. */
   readonly allowedChildren?: readonly string[];
+  /**
+   * Extra structural validation, or an attrs transform, beyond what a Zod
+   * schema and `allowedChildren` can express from attributes alone - e.g.
+   * a `:::tabs` container requiring every `:::tab` child to carry a
+   * non-empty `label` (a per-child check, not an attribute of `tabs`
+   * itself), or a `::::code-group` requiring every child to be a fenced
+   * code block rather than a directive at all (so `allowedChildren`, which
+   * only understands directive children, doesn't apply to it). Runs after
+   * attribute validation and `allowedChildren`, given the raw container
+   * node and the attrs computed so far; a problem it finds is reported the
+   * same way an `allowedChildren` mismatch is, via
+   * `DirectiveStructureError`, with every issue named rather than just the
+   * first.
+   */
+  readonly deriveAttrs?: (
+    node: ContainerDirective,
+    attrs: Record<string, unknown>,
+  ) => { ok: true; attrs: Record<string, unknown> } | { ok: false; issues: string[] };
 }
 
 /**
@@ -76,22 +112,377 @@ export function defineDirective<Attrs extends Record<string, unknown>>(config: {
   schema: z.ZodType<Attrs>;
   component: ComponentType<Attrs & { children?: ReactNode }>;
   allowedChildren?: readonly string[];
+  deriveAttrs?: (
+    node: ContainerDirective,
+    attrs: Attrs,
+  ) => { ok: true; attrs: Attrs } | { ok: false; issues: string[] };
 }): DocComponentEntry {
   const { component, schema } = config;
   return {
     kind: config.kind,
     schema: schema as unknown as z.ZodType<Record<string, unknown>>,
     allowedChildren: config.allowedChildren,
+    deriveAttrs: config.deriveAttrs as DocComponentEntry["deriveAttrs"],
     render: (attrs, children) => createElement(component, attrs as Attrs, children),
   };
 }
 
 /**
- * Directive name -> component entry. Empty until a component sub-task
- * (T3 onward) assigns entries here directly, e.g. `DOC_COMPONENTS.note =
- * DOC_COMPONENTS.callout = defineDirective({...})` for callout aliases.
+ * Directive name -> component entry. Each component sub-task assigns its
+ * entries here directly, e.g. `DOC_COMPONENTS.note = DOC_COMPONENTS.callout
+ * = defineDirective({...})` for callout aliases (below).
  */
 export const DOC_COMPONENTS: Record<string, DocComponentEntry> = {};
+
+/**
+ * `:::callout{type=...}` plus its six name aliases (`:::note`, `:::tip`,
+ * ...) - one `defineDirective` per alias so each carries its own default
+ * `type`, but all six point at the same `Callout` component. `type`
+ * itself can still be overridden explicitly (`:::note{type=danger}`) since
+ * every alias's schema accepts the full enum, not just its own default.
+ */
+function calloutAttributesSchema(defaultType: (typeof CALLOUT_TYPES)[number]) {
+  return z.object({
+    type: z.enum(CALLOUT_TYPES).default(defaultType),
+    title: z.string().optional(),
+  });
+}
+
+DOC_COMPONENTS.callout = defineDirective({
+  kind: "containerDirective",
+  schema: calloutAttributesSchema("note"),
+  component: Callout,
+});
+
+for (const type of CALLOUT_TYPES) {
+  DOC_COMPONENTS[type] = defineDirective({
+    kind: "containerDirective",
+    schema: calloutAttributesSchema(type),
+    component: Callout,
+  });
+}
+
+/**
+ * `:::file-tree` - a folder structure authored as an ordinary nested
+ * markdown list rather than directive syntax. `nodes` isn't an author-
+ * facing attribute (the schema below never produces it); `deriveAttrs`
+ * overwrites the placeholder with `parseFileTree`'s real result, or fails
+ * the directive with `DIRECTIVE_STRUCTURE_INVALID` when the body isn't
+ * exactly one list.
+ */
+DOC_COMPONENTS["file-tree"] = defineDirective({
+  kind: "containerDirective",
+  schema: z.object({}).transform(() => ({ nodes: [] as FileTreeNode[] })),
+  component: FileTree,
+  deriveAttrs: (node, attrs) => {
+    const { children } = extractDirectiveLabel(node);
+    const result = parseFileTree(children);
+    return result.ok ? { ok: true, attrs: { ...attrs, nodes: result.nodes } } : result;
+  },
+});
+
+/**
+ * `:::api-endpoint{method path auth deprecated}`. `method` and `path` are
+ * independent top-level Zod fields rather than one `superRefine` over the
+ * whole object, so `safeParse` aggregates issues from both when both are
+ * wrong - a `DirectiveAttributeError` names every bad attribute in one
+ * pass, not just the first one it happens to check (the same aggregation
+ * every other schema in this file already gets for free from `z.object`).
+ */
+const apiEndpointAttributesSchema = z.object({
+  method: z.string().transform((value, ctx) => {
+    const upper = value.toUpperCase();
+    if (!(HTTP_METHODS as readonly string[]).includes(upper)) {
+      ctx.addIssue({
+        code: "custom",
+        message: `must be one of ${HTTP_METHODS.join(", ")}, received "${value}"`,
+      });
+      return z.NEVER;
+    }
+    return upper as (typeof HTTP_METHODS)[number];
+  }),
+  path: z.string().transform((value, ctx) => {
+    if (!value.startsWith("/")) {
+      ctx.addIssue({ code: "custom", message: `must start with "/", received "${value}"` });
+      return z.NEVER;
+    }
+    return value;
+  }),
+  auth: directiveBoolean().optional(),
+  deprecated: directiveBoolean().optional(),
+});
+
+DOC_COMPONENTS["api-endpoint"] = defineDirective({
+  kind: "containerDirective",
+  schema: apiEndpointAttributesSchema,
+  component: ApiEndpoint,
+});
+
+/**
+ * `:::playground{title status href}` - see `Playground`'s own doc comment
+ * for why this is a deliberate placeholder rather than an oversight. No
+ * `deriveAttrs`/`allowedChildren` needed: `title` falls back to the D8
+ * directive label the same generic way every other component's does, and
+ * the body is ordinary explanatory prose with no required shape.
+ */
+DOC_COMPONENTS.playground = defineDirective({
+  kind: "containerDirective",
+  schema: z.object({
+    title: z.string().optional(),
+    status: z.enum(PLAYGROUND_STATUSES).default("coming-soon"),
+    href: z.string().optional(),
+  }),
+  component: Playground,
+});
+
+/**
+ * `::package-install{name dev global exec}` - a leaf directive (no body),
+ * so there's no D8 label to fall back to and no `deriveAttrs` need. `name`
+ * defaults to `siteConfig.packageName` when omitted, so the common case is
+ * just `::package-install{}`; the `.pipe(directiveList())` step then
+ * splits whatever string results (author-supplied or the default) the
+ * same space/comma-separated way every other list attribute does. A name
+ * that splits to nothing - `name=""` or `name=" "` - fails explicitly
+ * rather than silently reaching `buildInstallCommand` with an empty list.
+ */
+const packageInstallAttributesSchema = z.object({
+  name: z
+    .string()
+    .optional()
+    .transform((value) => value ?? siteConfig.packageName)
+    .pipe(directiveList())
+    .transform((packages, ctx) => {
+      if (packages.length === 0) {
+        ctx.addIssue({ code: "custom", message: "name must include at least one package name" });
+        return z.NEVER;
+      }
+      return packages;
+    }),
+  dev: directiveBoolean().optional(),
+  global: directiveBoolean().optional(),
+  exec: directiveBoolean().optional(),
+});
+
+DOC_COMPONENTS["package-install"] = defineDirective({
+  kind: "leafDirective",
+  schema: packageInstallAttributesSchema,
+  component: PackageInstall,
+});
+
+/**
+ * Checks every `:::tab` child of a `:::::tabs` container for a non-empty
+ * `label` attribute, naming every offending index rather than stopping at
+ * the first - a missing label is a structure issue on the *parent*, not an
+ * attribute error on the individual `tab` (which is why this lives in
+ * `tabs`'s `deriveAttrs` rather than in `tab`'s own schema): the whole
+ * point is one aggregated, useful error instead of one opaque fallback per
+ * broken tab.
+ */
+function validateTabLabels(node: ContainerDirective): string[] {
+  const issues: string[] = [];
+  node.children.forEach((child, index) => {
+    if (isContainerDirective(child) && child.name === "tab") {
+      const label = toAttributeRecord(child).label;
+      if (label === undefined || label.trim().length === 0) {
+        issues.push(`tab at index ${index} is missing a required "label" attribute`);
+      }
+    }
+  });
+  return issues;
+}
+
+DOC_COMPONENTS.tabs = defineDirective({
+  kind: "containerDirective",
+  schema: z.object({ sync: z.string().optional() }),
+  component: DocTabs,
+  allowedChildren: ["tab"],
+  deriveAttrs: (node, attrs) => {
+    const issues = validateTabLabels(node);
+    return issues.length > 0 ? { ok: false, issues } : { ok: true, attrs };
+  },
+});
+
+/** Never dispatched on its own (D3/D4) - only ever encountered as a
+ * `:::tab` child while `tabs` recurses into its body via `MarkdownNodes`,
+ * by which point `tabs`'s own `deriveAttrs` has already guaranteed every
+ * such child carries a non-empty `label`. */
+DOC_COMPONENTS.tab = defineDirective({
+  kind: "containerDirective",
+  schema: z.object({ label: z.string() }),
+  component: TabPanel,
+});
+
+/**
+ * `::::code-group` requires every child to be a fenced code block, not a
+ * directive - `allowedChildren` only understands directive-named children,
+ * so this check lives in `deriveAttrs` instead, naming the offending index
+ * and node type for anything else (most often the D7 mismatched-colon
+ * mistake leaving stray paragraphs behind).
+ */
+DOC_COMPONENTS["code-group"] = defineDirective({
+  kind: "containerDirective",
+  schema: z.object({}),
+  component: CodeGroup,
+  deriveAttrs: (node, attrs) => {
+    const issues: string[] = [];
+    node.children.forEach((child, index) => {
+      if (child.type !== "code") {
+        issues.push(`expected only fenced code blocks, found a "${child.type}" node at index ${index}`);
+      }
+    });
+    return issues.length > 0 ? { ok: false, issues } : { ok: true, attrs };
+  },
+});
+
+/**
+ * `::::steps` / `:::step{title="..."}`, the same registry pattern as
+ * `tabs`/`tab` (T6): `step` is only ever encountered as a child while
+ * `steps` recurses into its body, never dispatched on its own. No
+ * `deriveAttrs` needed here - unlike a tab's `label`, a step's `title` is
+ * optional (falls back to nothing rather than needing to be caught as a
+ * structure issue), and D8's generic label-into-`title` merge in
+ * `resolveDirective` already covers "attribute, falling back to the
+ * directive label" with no extra code.
+ */
+DOC_COMPONENTS.steps = defineDirective({
+  kind: "containerDirective",
+  schema: z.object({}),
+  component: Steps,
+  allowedChildren: ["step"],
+});
+
+DOC_COMPONENTS.step = defineDirective({
+  kind: "containerDirective",
+  schema: z.object({ title: z.string().optional() }),
+  component: StepPanel,
+});
+
+/**
+ * Under `type="single"`, at most one `:::accordion-item` may carry `open`
+ * - Radix's own `Accordion` with `type="single"` accepts only one default
+ * value, so two items claiming to be the default-open one is genuinely
+ * ambiguous, not just redundant. Reports every extra `open` beyond the
+ * first as its own issue (naming both indices) rather than silently
+ * keeping the first and discarding the rest with no explanation.
+ */
+function validateSingleAccordionOpen(node: ContainerDirective): string[] {
+  const isOpen = directiveBoolean();
+  const openIndexes: number[] = [];
+  node.children.forEach((child, index) => {
+    if (isContainerDirective(child) && child.name === "accordion-item") {
+      const raw = toAttributeRecord(child).open;
+      if (raw !== undefined && isOpen.safeParse(raw).data === true) {
+        openIndexes.push(index);
+      }
+    }
+  });
+  if (openIndexes.length <= 1) {
+    return [];
+  }
+  const [first, ...rest] = openIndexes;
+  return rest.map(
+    (index) =>
+      `accordion-item at index ${index} also has "open", but type="single" allows only one default-open item (the first, at index ${first})`,
+  );
+}
+
+DOC_COMPONENTS.accordion = defineDirective({
+  kind: "containerDirective",
+  schema: z.object({ type: z.enum(["single", "multiple"]).default("single") }),
+  component: DocAccordion,
+  allowedChildren: ["accordion-item"],
+  deriveAttrs: (node, attrs) => {
+    if (attrs.type !== "single") {
+      return { ok: true, attrs };
+    }
+    const issues = validateSingleAccordionOpen(node);
+    return issues.length > 0 ? { ok: false, issues } : { ok: true, attrs };
+  },
+});
+
+/** Never dispatched on its own (D3/D4) - see `AccordionItemPanel`. */
+DOC_COMPONENTS["accordion-item"] = defineDirective({
+  kind: "containerDirective",
+  schema: z.object({ title: z.string().optional(), open: directiveBoolean().optional() }),
+  component: AccordionItemPanel,
+});
+
+/** Maps a `columns` enum string to its literal numeric value, keeping the
+ * precise `1 | 2 | 3` type `CardsGrid` expects - `.transform(Number)`
+ * would widen it to plain `number` instead. */
+const CARDS_COLUMN_VALUES = { "1": 1, "2": 2, "3": 3 } as const;
+
+/**
+ * `::::cards{columns}` / `:::card{title icon href}`. `card` is fully
+ * self-contained (unlike `tab`/`step`/`accordion-item`, `cards` never
+ * needs to read anything back out of it) - it renders its own title, icon,
+ * and link chrome, so `CardsGrid` is purely a responsive grid wrapper with
+ * no compound-component machinery at all.
+ */
+DOC_COMPONENTS.cards = defineDirective({
+  kind: "containerDirective",
+  schema: z.object({
+    columns: z
+      .enum(["1", "2", "3"])
+      .default("3")
+      .transform((value) => CARDS_COLUMN_VALUES[value]),
+  }),
+  component: CardsGrid,
+  allowedChildren: ["card"],
+});
+
+DOC_COMPONENTS.card = defineDirective({
+  kind: "containerDirective",
+  schema: z.object({
+    title: z.string().optional(),
+    icon: iconAttribute(),
+    href: z.string().optional(),
+  }),
+  component: DocCard,
+});
+
+/** See `CARDS_COLUMN_VALUES` - same reasoning, narrower range. */
+const FEATURES_COLUMN_VALUES = { "2": 2, "3": 3 } as const;
+
+/**
+ * `::::features{columns}` / `:::feature{title icon}` - the marketing-
+ * leaning sibling of `cards`/`card`, same self-contained shape. `columns`
+ * is closed to 2|3 (never 1 - a single-column "grid" of features reads as
+ * a plain list, which the grammar doesn't offer a features-specific reason
+ * to want over just writing prose).
+ */
+DOC_COMPONENTS.features = defineDirective({
+  kind: "containerDirective",
+  schema: z.object({
+    columns: z
+      .enum(["2", "3"])
+      .default("3")
+      .transform((value) => FEATURES_COLUMN_VALUES[value]),
+  }),
+  component: FeatureGrid,
+  allowedChildren: ["feature"],
+});
+
+DOC_COMPONENTS.feature = defineDirective({
+  kind: "containerDirective",
+  schema: z.object({ title: z.string().optional(), icon: iconAttribute() }),
+  component: Feature,
+});
+
+/**
+ * `:badge[Label]{variant}` - the first `textDirective` entry in this
+ * registry. Needs no change to `markdown-nodes.tsx`'s `TextDirectiveNode`,
+ * which already dispatches every text directive through `resolveDirective`
+ * generically (D4); an unregistered text directive is unaffected and still
+ * falls through to `reconstructTextDirectiveSource`; that fallback keys on
+ * the directive's *name* being absent from `DOC_COMPONENTS`, not on
+ * whether any text directive at all has been registered.
+ */
+DOC_COMPONENTS.badge = defineDirective({
+  kind: "textDirective",
+  schema: z.object({ variant: z.enum(["default", "secondary", "outline", "destructive"]).default("default") }),
+  component: DocBadge,
+});
 
 /** A directive that resolved cleanly against `DOC_COMPONENTS`. */
 export interface DirectiveResolutionOk {
@@ -208,12 +599,35 @@ export function resolveDirective(node: DirectiveNode): DirectiveResolution {
 
   const label = isContainerDirective(node) ? extractDirectiveLabel(node).label : null;
 
+  // D8: "extract [the label] as the title when no title attribute is
+  // given" - generically, for any component whose schema has a `title`
+  // field, not just callouts, so this only needs writing once. A `title`
+  // attribute always wins when both are present.
+  let attrs =
+    label !== null && attrsResult.data.title === undefined
+      ? { ...attrsResult.data, title: label }
+      : attrsResult.data;
+
+  if (entry.deriveAttrs !== undefined && isContainerDirective(node)) {
+    const derived = entry.deriveAttrs(node, attrs);
+    if (!derived.ok) {
+      return {
+        ok: false,
+        error: new DirectiveStructureError(`invalid structure for ":::${node.name}"`, {
+          name: node.name,
+          issues: derived.issues,
+        }),
+      };
+    }
+    attrs = derived.attrs;
+  }
+
   return {
     ok: true,
     name: node.name,
-    attrs: attrsResult.data,
+    attrs,
     label,
-    render: (children: ReactNode) => entry.render(attrsResult.data, children),
+    render: (children: ReactNode) => entry.render(attrs, children),
   };
 }
 
