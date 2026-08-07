@@ -3,7 +3,7 @@ title: Documentation Components
 description: The interactive component library available inside documentation markdown.
 category: Reference
 order: 5
-updated: 2026-08-07
+updated: 2026-08-08
 ---
 
 # Documentation Components
@@ -20,11 +20,98 @@ This page grows with the component library - each new component gets a
 section here, both as documentation and as a live check that it renders
 correctly.
 
+## Authoring reference
+
+Read this before writing a new directive into a content file. Every
+mistake this bridge has actually produced traces back to one of the four
+things below - the fallback card that appears in place of a broken
+directive (development only; production renders the body as plain
+markdown instead) always names which one.
+
+### The three directive forms
+
+| Form | Syntax | Has a body? | Example |
+|---|---|---|---|
+| Container | `:::name{attrs}` ... `:::` | Yes - block content | `:::callout{type=tip}` |
+| Leaf | `::name{attrs}` | No | `::package-install{name="aniki-sdk"}` |
+| Text | `:name[label]{attrs}` | No - inline only | `:badge[Beta]{variant=outline}` |
+
+A directive registered as one form written as another fails with a
+`DIRECTIVE_STRUCTURE_INVALID` error naming the correct syntax - `:::badge`
+doesn't work because `badge` is registered as a text directive, not a
+container.
+
+### Nesting: outer containers need more colons
+
+A container directive's fence is however many colons it opens with - not
+always three. When a container's *body* contains another container
+directive (`:::tabs` holding `:::tab`, `:::steps` holding `:::step`,
+`:::accordion` holding `:::accordion-item`, `:::cards` holding `:::card`,
+`:::features` holding `:::feature`), the **outer** one needs **four**
+colons so its closing fence doesn't collide with the inner directive's own
+`:::` close:
+
+```md
+::::tabs{sync="pkg"}
+:::tab{label="npm"}
+npm install
+:::
+:::tab{label="pnpm"}
+pnpm add
+:::
+::::
+```
+
+Get this wrong - three colons on both - and the *inner* directive's
+closing `:::` also closes the *outer* one early. The visible symptom is a
+stray literal `:::` rendered as its own paragraph right after the first
+inner block, and every directive after it silently falls outside the
+container it was meant to be inside. If a tab, step, or card group looks
+like it only has one child and there's a bare `:::` sitting in the
+rendered page right after it, this is almost always why.
+
+### The label form
+
+`:::name[Label]` puts `Label` as the directive's title without an explicit
+`title=` attribute - the bridge extracts it and merges it into `title`
+generically for every component whose schema has one (`resolveDirective`'s
+own D8 handling, not something each component re-implements). Two things
+follow from that:
+
+- An explicit `title=` attribute always wins over the label if both are
+  present.
+- The label is stripped from the rendered body. Don't repeat it as the
+  first line of the directive's content - that would only happen if you
+  hand-wrote the title into the body yourself, but it's a mistake worth
+  knowing not to make, since nothing will warn you if you do.
+
+### Attribute values are always strings
+
+Directive syntax has no concept of a boolean, a number, or a list - every
+attribute value `remark-directive` parses is a plain string, including a
+bare flag like `{dev}`, which parses to `dev=""` (empty string), not
+`true`. This library's schemas coerce centrally, so authoring reads
+naturally:
+
+- A bare flag - `{dev}`, `{auth}`, `{open}` - is truthy. So are `"true"`,
+  `"yes"`, `"1"`, and `"on"`. `"false"`, `"no"`, `"0"`, and `"off"` are
+  falsy; anything else is a validation error, not a silent default.
+- `{columns=3}` arrives as the string `"3"`, coerced to the number `3` by
+  the schema - never write a component that calls `Number()` or
+  `Boolean()` on an attribute itself.
+- A list attribute (`::package-install`'s `name`) accepts comma- *or*
+  space-separated values - `name="react, vue node"` and
+  `name="react vue node"` both split into `["react", "vue", "node"]`.
+
 ## Callouts
 
 `:::callout{type=...}` or one of its six aliases - `:::note`, `:::tip`,
 `:::warning`, `:::danger`, `:::success`, `:::info`. A `title` attribute or a
 directive label overrides the type's default title.
+
+:::callout{type=note}
+The base form, spelled out - equivalent to `:::note` below.
+:::
 
 :::note
 A plain note, using its default title.
