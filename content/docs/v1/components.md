@@ -51,3 +51,31 @@ Everything worked.
 :::info
 Neutral, informational context that isn't quite a note.
 :::
+
+## Code blocks
+
+A fenced code block renders through the shared `CodeBlock` component -
+title, language badge, and a copy button, no syntax highlighting (that is
+explicitly out of scope for this step).
+
+```ts title="agent.ts" showLineNumbers {2}
+export function greet(name: string) {
+  return `Hello, ${name}!`;
+}
+```
+
+## Terminal
+
+` ```terminal ` renders a recorded terminal session instead of a plain code
+block. A line starting with `$ ` or `> ` is a command, dimmed prompt and
+all; everything else is output. The copy control copies commands only,
+prompts stripped, so pasting the result runs cleanly.
+
+```terminal
+$ npm install @aniki/sdk
+added 1 package in 812ms
+
+$ npm run dev
+> aniki-sdk-docs@0.1.0 dev
+Ready on http://localhost:3000
+```

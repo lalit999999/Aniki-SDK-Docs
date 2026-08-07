@@ -18,6 +18,7 @@ import { parseCodeMeta } from "@/lib/doc-components/code-meta";
 import { issuesFromDirectiveError, reconstructTextDirectiveSource, resolveDirective } from "@/lib/doc-components/registry";
 
 import { CodeBlock } from "./code-block";
+import { Terminal } from "./terminal";
 import { UnknownDirective } from "./unknown-directive";
 
 /**
@@ -85,6 +86,9 @@ function BlockNode({
     case "list":
       return <ListBlock node={node} headingQueue={headingQueue} route={route} />;
     case "code": {
+      if (node.lang === "terminal") {
+        return <Terminal code={node.value} />;
+      }
       const meta = parseCodeMeta(node.meta);
       return (
         <CodeBlock
