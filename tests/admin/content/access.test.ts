@@ -73,8 +73,14 @@ describe("verifySessionToken", () => {
   it("rejects a tampered signature", async () => {
     const token = await mintToken();
     const [payload, signature] = token.split(".");
-    const flippedChar = signature.at(-1) === "A" ? "B" : "A";
-    const tamperedSignature = `${signature.slice(0, -1)}${flippedChar}`;
+    // Flips the first character rather than the last: a base64url group's
+    // final character can carry unused padding bits (HMAC-SHA256 is 32
+    // bytes -> 43 base64url characters, the last of which only encodes 4
+    // significant bits), so flipping *it* occasionally decodes back to the
+    // same byte sequence and makes this test flaky. Every earlier
+    // character always encodes real signature bits.
+    const flippedChar = signature.at(0) === "A" ? "B" : "A";
+    const tamperedSignature = `${flippedChar}${signature.slice(1)}`;
     await expect(verifySessionToken(`${payload}.${tamperedSignature}`, SECRET)).resolves.toBeNull();
   });
 
