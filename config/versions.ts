@@ -16,6 +16,7 @@
 import type { DocsVersion } from "@/lib/versions/types";
 
 export const DOCS_VERSIONS: readonly DocsVersion[] = [
+  // aniki:versions:start — machine-rewritten by lib/admin/versions/scaffold.ts; hand edits are preserved only if they remain valid DocsVersion literals
   {
     id: "v1",
     label: "v1.0",
@@ -23,4 +24,5 @@ export const DOCS_VERSIONS: readonly DocsVersion[] = [
     releasedAt: "2026-08-03",
     sdkVersion: "0.1.x",
   },
+  // aniki:versions:end
 ];
