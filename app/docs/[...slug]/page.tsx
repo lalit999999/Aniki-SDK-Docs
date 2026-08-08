@@ -13,6 +13,7 @@ import { MobileToc } from "@/components/docs/mobile-toc";
 import { PreviousNextNav } from "@/components/docs/previous-next-nav";
 import { TableOfContents } from "@/components/docs/table-of-contents";
 import { VersionNotice } from "@/components/docs/version-notice";
+import { AnalyticsCollector } from "@/components/analytics/analytics-collector";
 import {
   findDocBySlug,
   getAdjacentDocs,
@@ -109,6 +110,7 @@ export default async function DocsCatchAllPage({
     const meta = await getAllDocMeta(versionId);
     return (
       <>
+        <AnalyticsCollector versionId={versionId} />
         <DocsNavMobile nav={nav} version={version} />
         <DocsSidebar nav={nav} version={version} />
         <DocsIndex index={index} docs={meta} version={version} />
@@ -125,6 +127,7 @@ export default async function DocsCatchAllPage({
 
   return (
     <>
+      <AnalyticsCollector versionId={versionId} />
       <DocsNavMobile nav={nav} version={version} />
       <DocsSidebar nav={nav} version={version} />
       <div className="min-w-0 py-8">

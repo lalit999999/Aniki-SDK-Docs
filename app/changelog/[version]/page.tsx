@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { format } from "date-fns";
 
+import { AnalyticsCollector } from "@/components/analytics/analytics-collector";
 import { Badge } from "@/components/ui/badge";
 import { MarkdownBody } from "@/components/docs/markdown-body";
 import { PreviousNextNav } from "@/components/docs/previous-next-nav";
@@ -68,6 +69,7 @@ export default async function ReleasePage({
 
   return (
     <div className="mx-auto w-full max-w-3xl flex-1 px-4 py-12 sm:px-6 lg:px-8">
+      <AnalyticsCollector versionId={release.meta.docsVersion} />
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <Badge variant={STATUS_BADGE_VARIANT[release.meta.status]} className="capitalize">
           {release.meta.status}
