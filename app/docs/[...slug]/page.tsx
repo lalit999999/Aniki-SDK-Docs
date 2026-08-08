@@ -13,6 +13,7 @@ import { MobileToc } from "@/components/docs/mobile-toc";
 import { PreviousNextNav } from "@/components/docs/previous-next-nav";
 import { TableOfContents } from "@/components/docs/table-of-contents";
 import { VersionNotice } from "@/components/docs/version-notice";
+import { AnalyticsCollector } from "@/components/analytics/analytics-collector";
 import {
   findDocBySlug,
   getAdjacentDocs,
@@ -20,6 +21,7 @@ import {
   getAllVersionedRoutes,
   getDocNavigation,
 } from "@/lib/content";
+import { buildPageMetadata } from "@/lib/seo";
 import { getVersionById } from "@/lib/versions";
 import { resolveDocsPath } from "@/lib/versions/route";
 
@@ -45,43 +47,44 @@ export async function generateMetadata({
   params: Promise<{ slug: string[] }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const resolved = resolveDocsPath(segmentsFromParam(slug));
+  const segments = segmentsFromParam(slug);
+  const resolved = resolveDocsPath(segments);
   if (resolved === null) {
     return {};
   }
 
   const { versionId, docSlug } = resolved;
+  const imageUrl = `/docs/opengraph-image/${segments.join("/")}`;
 
   if (docSlug === null) {
     const index = await findDocBySlug("index", versionId);
     if (index === null) {
       return {};
     }
-    return {
+    return buildPageMetadata({
       title: index.meta.title,
       description: index.meta.description,
-      alternates: { canonical: index.meta.route },
-      robots: index.meta.isLatestVersion ? undefined : { index: false, follow: true },
-    };
+      path: index.meta.route,
+      type: "website",
+      noindex: !index.meta.isLatestVersion,
+      imageUrl,
+    });
   }
 
   const doc = await findDocBySlug(docSlug, versionId);
   if (doc === null) {
     return {};
   }
-  return {
+  return buildPageMetadata({
     title: doc.meta.title,
     description: doc.meta.description,
-    alternates: { canonical: doc.meta.route },
-    keywords: doc.meta.tags.length > 0 ? [...doc.meta.tags] : undefined,
-    robots: doc.meta.deprecated ? { index: false, follow: true } : undefined,
-    openGraph: {
-      title: doc.meta.title,
-      description: doc.meta.description,
-      type: "article",
-      modifiedTime: doc.meta.updatedAt ?? undefined,
-    },
-  };
+    path: doc.meta.route,
+    type: "article",
+    modifiedAt: doc.meta.updatedAt ?? undefined,
+    noindex: doc.meta.deprecated,
+    keywords: doc.meta.tags.length > 0 ? doc.meta.tags : undefined,
+    imageUrl,
+  });
 }
 
 export default async function DocsCatchAllPage({
@@ -107,6 +110,7 @@ export default async function DocsCatchAllPage({
     const meta = await getAllDocMeta(versionId);
     return (
       <>
+        <AnalyticsCollector versionId={versionId} />
         <DocsNavMobile nav={nav} version={version} />
         <DocsSidebar nav={nav} version={version} />
         <DocsIndex index={index} docs={meta} version={version} />
@@ -123,6 +127,7 @@ export default async function DocsCatchAllPage({
 
   return (
     <>
+      <AnalyticsCollector versionId={versionId} />
       <DocsNavMobile nav={nav} version={version} />
       <DocsSidebar nav={nav} version={version} />
       <div className="min-w-0 py-8">

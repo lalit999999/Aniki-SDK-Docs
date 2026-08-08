@@ -2,19 +2,16 @@ import type { Metadata } from "next";
 
 import { ReleaseCard } from "@/components/docs/release-card";
 import { getAllReleaseMeta } from "@/lib/changelog";
+import { buildPageMetadata } from "@/lib/seo";
 
 const CHANGELOG_DESCRIPTION = "Release notes for every Aniki SDK documentation version.";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: "Changelog",
   description: CHANGELOG_DESCRIPTION,
-  alternates: { canonical: "/changelog" },
-  openGraph: {
-    title: "Changelog",
-    description: CHANGELOG_DESCRIPTION,
-    type: "website",
-  },
-};
+  path: "/changelog",
+  type: "website",
+});
 
 /**
  * Every release, newest-first, as a `ReleaseCard`. `getAllReleaseMeta`

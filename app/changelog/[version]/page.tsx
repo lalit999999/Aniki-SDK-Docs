@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { format } from "date-fns";
 
+import { AnalyticsCollector } from "@/components/analytics/analytics-collector";
 import { Badge } from "@/components/ui/badge";
 import { MarkdownBody } from "@/components/docs/markdown-body";
 import { PreviousNextNav } from "@/components/docs/previous-next-nav";
@@ -10,6 +11,7 @@ import { STATUS_BADGE_VARIANT } from "@/components/docs/release-card";
 import { docsIndexRoute } from "@/lib/versions";
 import { findReleaseBySlug, getAdjacentReleases, getReleaseSlugs } from "@/lib/changelog";
 import type { ReleaseMeta } from "@/lib/changelog";
+import { buildPageMetadata } from "@/lib/seo";
 
 const RELEASE_DATE_FORMAT = "d MMM yyyy";
 
@@ -35,16 +37,13 @@ export async function generateMetadata({
   if (release === null) {
     return {};
   }
-  return {
+  return buildPageMetadata({
     title: release.meta.title,
     description: release.meta.summary,
-    alternates: { canonical: release.meta.route },
-    openGraph: {
-      title: release.meta.title,
-      description: release.meta.summary,
-      type: "article",
-    },
-  };
+    path: release.meta.route,
+    type: "article",
+    publishedAt: release.meta.date,
+  });
 }
 
 /**
@@ -70,6 +69,7 @@ export default async function ReleasePage({
 
   return (
     <div className="mx-auto w-full max-w-3xl flex-1 px-4 py-12 sm:px-6 lg:px-8">
+      <AnalyticsCollector versionId={release.meta.docsVersion} />
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <Badge variant={STATUS_BADGE_VARIANT[release.meta.status]} className="capitalize">
           {release.meta.status}
