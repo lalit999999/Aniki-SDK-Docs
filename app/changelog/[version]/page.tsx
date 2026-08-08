@@ -10,6 +10,7 @@ import { STATUS_BADGE_VARIANT } from "@/components/docs/release-card";
 import { docsIndexRoute } from "@/lib/versions";
 import { findReleaseBySlug, getAdjacentReleases, getReleaseSlugs } from "@/lib/changelog";
 import type { ReleaseMeta } from "@/lib/changelog";
+import { buildPageMetadata } from "@/lib/seo";
 
 const RELEASE_DATE_FORMAT = "d MMM yyyy";
 
@@ -35,16 +36,13 @@ export async function generateMetadata({
   if (release === null) {
     return {};
   }
-  return {
+  return buildPageMetadata({
     title: release.meta.title,
     description: release.meta.summary,
-    alternates: { canonical: release.meta.route },
-    openGraph: {
-      title: release.meta.title,
-      description: release.meta.summary,
-      type: "article",
-    },
-  };
+    path: release.meta.route,
+    type: "article",
+    publishedAt: release.meta.date,
+  });
 }
 
 /**
