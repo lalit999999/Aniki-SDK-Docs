@@ -8,6 +8,7 @@ import { SkipLink } from "@/components/docs/skip-link";
 import { DocsHeader } from "@/components/docs/docs-header";
 import { DocsFooter } from "@/components/docs/docs-footer";
 import { NavigationProvider } from "@/components/docs/navigation-provider";
+import { SiteChrome } from "@/components/docs/site-chrome";
 import { SearchProvider } from "@/components/search/search-provider";
 import { siteConfig } from "@/config/site";
 
@@ -68,11 +69,15 @@ export default function RootLayout({
               */}
               <NavigationProvider nav={[]}>
                 <SkipLink />
-                <DocsHeader />
+                <SiteChrome>
+                  <DocsHeader />
+                </SiteChrome>
                 <main id="main-content" className="flex flex-1 flex-col">
                   {children}
                 </main>
-                <DocsFooter />
+                <SiteChrome>
+                  <DocsFooter />
+                </SiteChrome>
               </NavigationProvider>
             </SearchProvider>
           </TooltipProvider>

@@ -99,7 +99,12 @@ describe("verifySessionToken", () => {
   it("rejects a tampered signature", async () => {
     const issued = await issueSession("admin", config);
     const [payloadB64Url, signature] = issued.value.split(".");
-    const flipped = signature.slice(0, -1) + (signature.endsWith("A") ? "B" : "A");
+    // Flips the first character rather than the last: the trailing base64url
+    // character of a 32-byte digest carries two unused padding bits, so
+    // toggling it can occasionally decode to the same bytes and produce a
+    // false pass. The first character encodes real digest bits, so this
+    // tamper is guaranteed to change the decoded signature.
+    const flipped = (signature.startsWith("A") ? "B" : "A") + signature.slice(1);
     expect(await verifySessionToken(`${payloadB64Url}.${flipped}`, config)).toBeNull();
   });
 
