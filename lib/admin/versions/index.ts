@@ -27,11 +27,13 @@ export type { ScaffoldVersionOptions, ScaffoldVersionResult } from "./scaffold";
 export {
   AdminVersionsError,
   InvalidVersionInputError,
+  mapVersionsAdminError,
+  VersionDriftConflictError,
   VersionRegistryWriteError,
   VersionScaffoldError,
   VersionsAdminUnauthorizedError,
 } from "./errors";
-export type { AdminVersionsErrorCode } from "./errors";
+export type { AdminVersionsErrorCode, VersionsAdminErrorResponse } from "./errors";
 
 export type {
   NewVersionInput,

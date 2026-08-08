@@ -23,7 +23,12 @@ import { getContentRoot } from "@/lib/content";
 import { getVersions, validateVersions, VersionConfigError } from "@/lib/versions";
 import type { DocsVersion } from "@/lib/versions";
 
-import { InvalidVersionInputError, VersionRegistryWriteError, VersionScaffoldError } from "./errors";
+import {
+  InvalidVersionInputError,
+  VersionDriftConflictError,
+  VersionRegistryWriteError,
+  VersionScaffoldError,
+} from "./errors";
 import { detectDrift, hasDrift, validateNewVersionInput } from "./inspect";
 import type { NewVersionInput } from "./types";
 
@@ -149,10 +154,11 @@ async function removeTempDirectory(tempDir: string): Promise<void> {
  * versions and on-disk directories already disagree): scaffolding on top
  * of an already-broken registry would only compound the damage.
  *
- * @throws {InvalidVersionInputError} if drift is present, or if `input`
- * fails {@link validateNewVersionInput} or the full-registry
- * {@link validateVersions} safety net - in either case nothing on disk is
- * touched.
+ * @throws {VersionDriftConflictError} if the registry and content
+ * directories are already drifted - nothing on disk is touched.
+ * @throws {InvalidVersionInputError} if `input` fails
+ * {@link validateNewVersionInput} or the full-registry
+ * {@link validateVersions} safety net - nothing on disk is touched.
  * @throws {VersionScaffoldError} if copying the source content directory
  * fails, or if moving the scaffolded directory into place fails after the
  * registry file was already rewritten (in which case the registry file is
@@ -180,12 +186,10 @@ export async function scaffoldVersion(
 
   const drift = await detectDrift();
   if (hasDrift(drift)) {
-    throw new InvalidVersionInputError("cannot scaffold a new version while the registry and content disagree", {
-      issues: [
-        ...drift.declaredWithoutDirectory.map((id) => `declared version "${id}" has no directory`),
-        ...drift.directoryWithoutDeclaration.map((name) => `directory "${name}" has no matching declared version`),
-      ],
-    });
+    throw new VersionDriftConflictError(
+      "cannot scaffold a new version while the registry and content directories disagree",
+      drift,
+    );
   }
 
   const inputIssues = await validateNewVersionInput(input);

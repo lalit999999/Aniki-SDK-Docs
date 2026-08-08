@@ -10,6 +10,7 @@
 export type AdminVersionsErrorCode =
   | "VERSIONS_ADMIN_UNAUTHORIZED"
   | "INVALID_VERSION_INPUT"
+  | "VERSION_DRIFT_CONFLICT"
   | "VERSION_SCAFFOLD_ERROR"
   | "VERSION_REGISTRY_WRITE_ERROR";
 
@@ -76,6 +77,32 @@ export class VersionsAdminUnauthorizedError extends AdminVersionsError {
   readonly code = "VERSIONS_ADMIN_UNAUTHORIZED" as const;
 
   constructor(message: string, context: { reason: string }) {
+    super(message, context);
+  }
+}
+
+/**
+ * Thrown by `scaffoldVersion()` when `detectDrift()` reports that the
+ * registry and content directories already disagree, refusing to run
+ * rather than compound the damage. Distinct from `InvalidVersionInputError`:
+ * this is a conflict with existing server state, not a problem with the
+ * request body, so the versions API route maps it to `409`, not `400`.
+ *
+ * @example
+ * ```ts
+ * throw new VersionDriftConflictError("registry and content already disagree", {
+ *   declaredWithoutDirectory: [],
+ *   directoryWithoutDeclaration: ["v3"],
+ * });
+ * ```
+ */
+export class VersionDriftConflictError extends AdminVersionsError {
+  readonly code = "VERSION_DRIFT_CONFLICT" as const;
+
+  constructor(
+    message: string,
+    context: { declaredWithoutDirectory: readonly string[]; directoryWithoutDeclaration: readonly string[] },
+  ) {
     super(message, context);
   }
 }
@@ -151,4 +178,65 @@ export class VersionRegistryWriteError extends AdminVersionsError {
       this.cause = cause;
     }
   }
+}
+
+/** HTTP status and JSON body {@link mapVersionsAdminError} maps an error to. */
+export interface VersionsAdminErrorResponse {
+  status: number;
+  body: Record<string, unknown>;
+}
+
+/**
+ * Maps any error `requireVersionsAdmin`, `inspectVersions`, or
+ * `scaffoldVersion` can throw to an HTTP status and JSON body, shared by
+ * both `/api/admin/versions` route handlers so they respond identically to
+ * the same failure: unauthorized -> 401, drift present -> 409 with the
+ * drift report, invalid input -> 400 with `issues`, a scaffold or registry
+ * write failure -> 500 with a safe message that never leaks a filesystem
+ * path or stack trace. A pure function - no Next.js imports - so it's
+ * unit-testable without constructing a `Request`.
+ *
+ * @example
+ * ```ts
+ * try {
+ *   await requireVersionsAdmin();
+ * } catch (error) {
+ *   const { status, body } = mapVersionsAdminError(error);
+ *   return Response.json(body, { status });
+ * }
+ * ```
+ */
+export function mapVersionsAdminError(error: unknown): VersionsAdminErrorResponse {
+  if (error instanceof VersionsAdminUnauthorizedError) {
+    return { status: 401, body: { error: "unauthorized" } };
+  }
+
+  if (error instanceof VersionDriftConflictError) {
+    return {
+      status: 409,
+      body: {
+        error: "version_drift",
+        drift: {
+          declaredWithoutDirectory: error.context.declaredWithoutDirectory,
+          directoryWithoutDeclaration: error.context.directoryWithoutDeclaration,
+        },
+      },
+    };
+  }
+
+  if (error instanceof InvalidVersionInputError) {
+    return { status: 400, body: { error: "invalid_input", issues: error.context.issues } };
+  }
+
+  if (error instanceof VersionScaffoldError || error instanceof VersionRegistryWriteError) {
+    return {
+      status: 500,
+      body: {
+        error: "scaffold_failed",
+        message: "failed to scaffold the new version; nothing was left partially written",
+      },
+    };
+  }
+
+  return { status: 500, body: { error: "internal_error" } };
 }

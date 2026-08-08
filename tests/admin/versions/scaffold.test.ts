@@ -148,7 +148,7 @@ describe("scaffoldVersion", () => {
     }));
     vi.resetModules();
     const { scaffoldVersion } = await import("@/lib/admin/versions/scaffold");
-    const { InvalidVersionInputError } = await import("@/lib/admin/versions/errors");
+    const { VersionDriftConflictError } = await import("@/lib/admin/versions/errors");
 
     const before = await readFile(registryFilePath, "utf-8");
 
@@ -157,7 +157,7 @@ describe("scaffoldVersion", () => {
         { id: "v2", label: "v2.0", releasedAt: "2026-09-01", sourceVersionId: "v1", promoteToLatest: false },
         { registryFilePath },
       ),
-    ).rejects.toBeInstanceOf(InvalidVersionInputError);
+    ).rejects.toBeInstanceOf(VersionDriftConflictError);
 
     const after = await readFile(registryFilePath, "utf-8");
     expect(after).toBe(before);
