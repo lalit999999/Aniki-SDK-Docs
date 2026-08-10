@@ -44,13 +44,19 @@ const PUBLIC_ADMIN_PAGE = "/admin/login";
 const PUBLIC_API_PREFIX = "/api/admin/auth/";
 
 function isPublicPath(pathname: string): boolean {
-  return pathname === PUBLIC_ADMIN_PAGE || pathname.startsWith(PUBLIC_API_PREFIX);
+  return (
+    pathname === PUBLIC_ADMIN_PAGE || pathname.startsWith(PUBLIC_API_PREFIX)
+  );
 }
 
 function forward(request: NextRequest): NextResponse {
   const headers = new Headers(request.headers);
   headers.delete(SPOOFABLE_HEADER);
   return NextResponse.next({ request: { headers } });
+}
+
+function isPublicApiPath(pathname: string): boolean {
+  return pathname.startsWith(PUBLIC_API_PREFIX);
 }
 
 function notFound(): NextResponse {
@@ -61,7 +67,9 @@ function notFound(): NextResponse {
 }
 
 function unauthorizedJson(): NextResponse {
-  const { code, message } = new UnauthorizedError("authentication required").toJSON();
+  const { code, message } = new UnauthorizedError(
+    "authentication required",
+  ).toJSON();
   return NextResponse.json({ error: { code, message } }, { status: 401 });
 }
 
@@ -71,9 +79,15 @@ function redirectToLogin(request: NextRequest): NextResponse {
   return NextResponse.redirect(loginUrl, 307);
 }
 
-export default async function proxy(request: NextRequest): Promise<NextResponse> {
+export default async function proxy(
+  request: NextRequest,
+): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
   const isApiRequest = pathname.startsWith("/api/admin/");
+
+  if (isPublicApiPath(pathname)) {
+    return forward(request);
+  }
 
   let config: AdminConfig;
   try {
@@ -87,7 +101,8 @@ export default async function proxy(request: NextRequest): Promise<NextResponse>
   }
 
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
-  const session = token !== undefined ? await verifySessionToken(token, config) : null;
+  const session =
+    token !== undefined ? await verifySessionToken(token, config) : null;
 
   if (session !== null) {
     return forward(request);

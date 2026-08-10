@@ -14,6 +14,7 @@ import { getLatestVersion } from "./lib/versions/registry";
  */
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  transpilePackages: ["@hugeicons/react", "@hugeicons/core-free-icons"],
   async redirects() {
     const latestId = getLatestVersion().id;
     return [

@@ -1,6 +1,4 @@
 import Link from "next/link";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { GithubIcon } from "@hugeicons/core-free-icons";
 
 import { Button } from "@/components/ui/button";
 import { CopyCommand } from "@/components/docs/copy-command";
@@ -23,8 +21,8 @@ export default function Home() {
           Build production-ready AI agents
         </h1>
         <p className="mt-6 max-w-xl text-lg text-muted-foreground">
-          {siteConfig.name} is a provider-agnostic TypeScript SDK for building AI agents you can
-          inspect, test, and trust in production.
+          {siteConfig.name} is a provider-agnostic TypeScript SDK for building
+          AI agents you can inspect, test, and trust in production.
         </p>
 
         <div className="mt-8">
@@ -36,8 +34,19 @@ export default function Home() {
             <Link href="/docs">Read the docs</Link>
           </Button>
           <Button asChild variant="outline" size="lg">
-            <a href={siteConfig.links.sdkRepo} target="_blank" rel="noreferrer noopener">
-              <HugeiconsIcon icon={GithubIcon} strokeWidth={2} />
+            <a
+              href={siteConfig.links.sdkRepo}
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                className="h-4 w-4"
+                fill="currentColor"
+              >
+                <path d="M12 2a10 10 0 0 0-3.162 19.487c.5.09.682-.217.682-.482v-1.69c-2.78.605-3.366-1.193-3.366-1.193-.455-1.157-1.11-1.466-1.11-1.466-.908-.621.069-.609.069-.609 1.004.071 1.532 1.032 1.532 1.032.893 1.53 2.343 1.088 2.915.832.09-.647.35-1.087.637-1.338-2.22-.253-4.555-1.11-4.555-4.941 0-1.09.39-1.98 1.03-2.678-.103-.253-.446-1.268.098-2.643 0 0 .84-.269 2.75 1.024a9.52 9.52 0 0 1 5 0c1.91-1.293 2.75-1.024 2.75-1.024.544 1.375.201 2.39.098 2.643.64.698 1.03 1.588 1.03 2.678 0 3.84-2.338 4.685-4.566 4.934.36.31.68.92.68 1.855v2.75c0 .267.18.576.688.48A10 10 0 0 0 12 2Z" />
+              </svg>
               View on GitHub
             </a>
           </Button>
